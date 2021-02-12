@@ -1,0 +1,39 @@
+---
+title: 'DATA 622 - Homework #1'
+author: "Zach Alexander"
+date: "2/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#### Libraries used
+
+
+```{r libraries, warning=False}
+library(palmerpenguins)
+library(dplyr)
+library(ggplot2)
+```
+
+##### Part 1: Logistic Regression with binary outcome
+
+*The penguin dataset has a 'species' column. Please check how many categories you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).*
+
+First, we'll save the penguin dataset as a tibble so we can manipulate it easier in the next steps:
+
+```{r}
+penguins <- tibble(penguins)
+```
+
+Then, as mentioned above, we'll first have to identify the number of categories that make up the `species` column. We can do this by running the syntax below:
+
+```{r}
+penguins %>% count(species)
+```
+
+As we can see above, it looks like there are three species present in this dataset. Therefore, in order to create a logistic regression with a binary outcome, we'll have to determine which two species should be combined. We can do this by first taking a look at the 
+
+##### Part 2: Logistic Regression evaluation (AUC, TPR, FPR, TNR, FNR and Accuracy)
