@@ -9,31 +9,173 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-#### Libraries used
+### Libraries used
 
-
-```{r libraries, warning=False}
-library(palmerpenguins)
-library(dplyr)
-library(ggplot2)
+```{r libraries, warning=FALSE, message=FALSE, echo=FALSE}
+require(palmerpenguins)
+require(dplyr)
+require(ggplot2)
+require(tibble)
+require(tidyr)
+require(tidyverse)
+require(dplyr)
+require(ggplot2)
+require(ggfortify)
+require(gridExtra)
+require(GGally)
 ```
 
-##### Part 1: Logistic Regression with binary outcome
+***
 
-*The penguin dataset has a 'species' column. Please check how many categories you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).*
+#### Part 1: Logistic Regression with binary outcome
+
+*A) The penguin dataset has a 'species' column. Please check how many categories you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).*
+
+***
 
 First, we'll save the penguin dataset as a tibble so we can manipulate it easier in the next steps:
 
-```{r}
+```{r, echo=FALSE}
 penguins <- tibble(penguins)
 ```
 
 Then, as mentioned above, we'll first have to identify the number of categories that make up the `species` column. We can do this by running the syntax below:
 
 ```{r}
-penguins %>% count(species)
+summary(penguins$species)
 ```
 
-As we can see above, it looks like there are three species present in this dataset. Therefore, in order to create a logistic regression with a binary outcome, we'll have to determine which two species should be combined. We can do this by first taking a look at the 
+As we can see above, it looks like there are three species present in this dataset. Therefore, in order to create a logistic regression with a binary outcome, we'll have to determine which two species should be combined. We can also see from this summary that there are a small number of Chinstrap penguins in this dataset. This may be a good initial indication that combining this species with either Adelie or Gentoo will be best. However, before doing so, we can also take a look at the summary of all of the variables in the dataset, as well as some of the interactions between our continuous variables, including `bill_length_mm`, `bill_depth_mm`, `flipper_length_mm`, and `body_mass_g`.  
 
-##### Part 2: Logistic Regression evaluation (AUC, TPR, FPR, TNR, FNR and Accuracy)
+```{r, echo=FALSE}
+summary(penguins)
+```
+
+It looks like there are 11 individuals that have missing `sex` information, including two individuals in our dataset that have a large amount of NAs across most of the features. Therefore, I'll omit those from our analysis:
+
+```{r}
+penguins <- na.omit(penguins)
+```
+
+Next, we can create plots that show interactions between some of our continous variables:
+```{r, fig.height=16, fig.width=10, echo=FALSE, warning=FALSE}
+plot1 <- ggplot(penguins, aes(x = bill_length_mm, y = bill_depth_mm, col = species)) +
+    geom_point() + 
+    theme(legend.position="top") +
+    labs(title = "Bill Length and Bill Depth")
+
+plot2 <- ggplot(penguins, aes(x = bill_length_mm, y = flipper_length_mm, col = species)) +
+    geom_point() + 
+    theme(legend.position="top") +
+    labs(title = "Bill Length and Flipper Length")
+
+plot3 <- ggplot(penguins, aes(x = bill_length_mm, y = body_mass_g, col = species)) +
+    geom_point() + 
+    theme(legend.position="top") +
+    labs(title = "Bill Length and Body Mass")
+
+plot4 <- ggplot(penguins, aes(x = bill_depth_mm, y = flipper_length_mm, col = species)) +
+    geom_point() + 
+    theme(legend.position="top") +
+    labs(title = "Bill Depth and Flipper Length")
+
+plot5 <- ggplot(penguins, aes(x = bill_depth_mm, y = body_mass_g, col = species)) +
+    geom_point() + 
+    theme(legend.position="top") + 
+    labs(title = "Bill Depth and Body Mass")
+
+plot6 <- ggplot(penguins, aes(x = body_mass_g, y = flipper_length_mm, col = species)) +
+    geom_point() + 
+    theme(legend.position="top") + 
+    labs(title = "Flipper Length and Body Mass")
+
+grid.arrange(plot1, plot2, plot3, plot4, plot5, plot6, ncol=2, nrow=3)
+```
+Interestingly, when we break out the plots by species, we can see that many of the feature interactions show clustering between Adelie and Chinstrap penguins (red and green), while Gentoo penguins tend to contrast the other two species for most interactions. This is also confirmed by most of the single-variable distributions split out by species in the plots below. With the exception of the distribution of `bill_length_mm`, distributions for `body_mass_g`, `bill_depth_mm`, and `flipper_length_mm` all show there to be overlapping distributions between Adelie and Chinstrap penguin species.
+
+```{r, message=FALSE, warning=FALSE, fig.width=12, fig.height=10, echo=FALSE}
+penguins %>%
+  dplyr::select(species, body_mass_g, bill_length_mm, bill_depth_mm, flipper_length_mm) %>%
+  ggpairs(aes(color = species))
+```
+With this in mind, I think it'll be best to *combine the Chinstrap penguin species with the Adelie species* in order for us to create our binary outcome for our logistic regression. Therefore, to do this, we can do the following data manipulation by creating an extra column to bifurcate the species variable:
+
+```{r}
+penguins <- penguins %>% 
+  mutate(species_rollup = ifelse(species == 'Adelie' | species == 'Chinstrap', 'Adelie-Chinstrap', 'Gentoo'))
+```
+
+And now we can see the split between the two new groups of penguins:
+```{r, echo=FALSE}
+table(penguins$species_rollup)
+```
+
+***
+
+*B) Please make sure you are evaluating the independent variables appropriately in deciding which ones should be in the model.*
+
+***
+
+Now that the outcome variable of species has been rolled up into two distinct groups of penguins, the next step is to evaluate the independent variables in the dataset accordingly. A good first step is to take a look at the distributions of each feature to get a sense of kurtosis:
+
+```{r, warning=FALSE, echo=FALSE}
+
+
+
+plot7 <- ggplot(penguins, aes(x=body_mass_g)) + 
+    geom_histogram(aes(y=..density..),      
+                   binwidth=100,
+                   colour="gray", fill="white") +
+    geom_density(alpha=.7, fill="#619CFF") +
+   labs(title = "Body Mass Distribution")
+
+plot8 <- ggplot(penguins, aes(x=bill_length_mm)) + 
+    geom_histogram(aes(y=..density..),      
+                   binwidth=1,
+                   colour="gray", fill="white") +
+    geom_density(alpha=.7, fill="#619CFF") +
+    labs(title = "Bill Length (mm) Distribution")
+
+plot9 <- ggplot(penguins, aes(x=bill_depth_mm)) + 
+    geom_histogram(aes(y=..density..),    
+                   binwidth=0.5,
+                   colour="gray", fill="white") +
+    geom_density(alpha=.7, fill="#619CFF")  +
+    labs(title = "Bill Depth (mm) Distribution")
+
+plot10 <- ggplot(penguins, aes(x=flipper_length_mm)) + 
+    geom_histogram(aes(y=..density..),    
+                   binwidth=2.5,
+                   colour="gray", fill="white") +
+    geom_density(alpha=.7, fill="#619CFF")  +
+    labs(title = "Flipper Length (mm) Distribution")
+
+grid.arrange(plot7, plot8, plot9, plot10, ncol=2, nrow=2)
+```
+
+From the above distributions, we can see that most of our continuous variables are quite skewed. In order to alleviate this before subjecting to our logistic regression, we can perform some transformations to make a more normal shape.
+
+```{r}
+plot11 <- ggplot(penguins, aes(x=(abs(bill_length_mm - mean(bill_length_mm))^(1/2)))) + 
+    geom_histogram(aes(y=..density..),      
+                   binwidth=0.15,
+                   colour="gray", fill="white") +
+    geom_density(alpha=.7, fill="#619CFF") +
+    labs(title = "Bill Length (mm) Distribution")
+
+grid.arrange(plot8, plot11, ncol=2)
+```
+```{r}
+plot8 <- ggplot(penguins, aes(x=(abs(bill_length_mm - mean(bill_length_mm))^(1/2)))) + 
+    geom_histogram(aes(y=..density..),      
+                   binwidth=0.1,
+                   colour="gray", fill="white") +
+    geom_density(alpha=.7, fill="#619CFF") +
+    labs(title = "Bill Length (mm) Distribution")
+
+plot8
+```
+
+
+
+#### Part 2: Logistic Regression evaluation (AUC, TPR, FPR, TNR, FNR and Accuracy)
