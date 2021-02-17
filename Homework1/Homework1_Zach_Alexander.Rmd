@@ -9,8 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-### Libraries used
-
 ```{r libraries, warning=FALSE, message=FALSE, echo=FALSE}
 require(palmerpenguins)
 require(dplyr)
@@ -23,13 +21,18 @@ require(ggplot2)
 require(ggfortify)
 require(gridExtra)
 require(GGally)
+require(corrplot)
+require(devtools)
+require(caret)
+require(regclass)
+require(MASS)
 ```
 
 ***
 
 #### Part 1: Logistic Regression with binary outcome
 
-*A) The penguin dataset has a 'species' column. Please check how many categories you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).*
+**A) The penguin dataset has a 'species' column. Please check how many categories you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).**
 
 ***
 
@@ -112,16 +115,15 @@ table(penguins$species_rollup)
 
 ***
 
-*B) Please make sure you are evaluating the independent variables appropriately in deciding which ones should be in the model.*
+**B) Please make sure you are evaluating the independent variables appropriately in deciding which ones should be in the model.**
 
 ***
+
+*Checking kurtosis and transforming variables*  
 
 Now that the outcome variable of species has been rolled up into two distinct groups of penguins, the next step is to evaluate the independent variables in the dataset accordingly. A good first step is to take a look at the distributions of each feature to get a sense of kurtosis:
 
 ```{r, warning=FALSE, echo=FALSE}
-
-
-
 plot7 <- ggplot(penguins, aes(x=body_mass_g)) + 
     geom_histogram(aes(y=..density..),      
                    binwidth=100,
@@ -153,29 +155,138 @@ plot10 <- ggplot(penguins, aes(x=flipper_length_mm)) +
 grid.arrange(plot7, plot8, plot9, plot10, ncol=2, nrow=2)
 ```
 
-From the above distributions, we can see that most of our continuous variables are quite skewed. In order to alleviate this before subjecting to our logistic regression, we can perform some transformations to make a more normal shape.
+From the above distributions, we can see that most of our continuous variables are quite skewed. In order to alleviate this before subjecting to our logistic regression, we can perform some transformations to make more normal distributions.
 
 ```{r}
-plot11 <- ggplot(penguins, aes(x=(abs(bill_length_mm - mean(bill_length_mm))^(1/2)))) + 
+# transform variables
+penguins$bill_length_transformed <- abs(penguins$bill_length_mm - mean(penguins$bill_length_mm))^(1/2)
+penguins$flipper_length_transformed <- abs(penguins$flipper_length_mm - mean(penguins$flipper_length_mm))^(1/2)
+```
+
+```{r, echo=FALSE}
+plot11 <- ggplot(penguins, aes(x=bill_length_transformed)) + 
     geom_histogram(aes(y=..density..),      
                    binwidth=0.15,
                    colour="gray", fill="white") +
-    geom_density(alpha=.7, fill="#619CFF") +
-    labs(title = "Bill Length (mm) Distribution")
+    geom_density(alpha=.7, fill="#F8776D") +
+    labs(title = "Bill Length -- Transformed")
 
-grid.arrange(plot8, plot11, ncol=2)
-```
-```{r}
-plot8 <- ggplot(penguins, aes(x=(abs(bill_length_mm - mean(bill_length_mm))^(1/2)))) + 
+plot12 <- ggplot(penguins, aes(x=flipper_length_transformed)) + 
     geom_histogram(aes(y=..density..),      
-                   binwidth=0.1,
+                   binwidth=0.15,
                    colour="gray", fill="white") +
-    geom_density(alpha=.7, fill="#619CFF") +
-    labs(title = "Bill Length (mm) Distribution")
+    geom_density(alpha=.7, fill="#F8776D") +
+    labs(title = "Flipper Length -- Transformed")
 
-plot8
+
+grid.arrange(plot8, plot11, plot10, plot12, ncol=2, nrow=2)
 ```
 
+As we can see above, we were able to perform a few transformations on `bill_length_mm` and `flipper_length_mm` to make more normal distributions. However, we will have to see if these transformations are interpretable when we run our logistic regression.  
+
+***
+
+*Checking for multicollinearity*  
+
+Additionally, when evaluating the independent variables, it's important to take multicollinearity into consideration. Multicollinearity can impact the variances of our parameter estimates, which could lead to incorrect inferences about relationships between our dependent variable (species) and independent variables. Therefore, I ran a correlation plot to check the collinearity between some of our independent variables.
+
+```{r, echo=FALSE}
+
+penguins_cont <- penguins %>% dplyr::select(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g)
+
+
+correlation = cor(penguins_cont, use = 'pairwise.complete.obs')
+
+corrplot(correlation, method='ellipse')
+```
+
+We can see above that `flipper_length` and `body_mass_g` have a pretty strong positive correlation with one another. This makes sense given that typically penguins with larger body mass will have larger flippers. Since we are seeing a bimodal distribution for `flipper_length` which led to a pretty in-depth transformation, we may consider excluding this feature from our logistic regression, given that it also shows such a strong relationship with `body_mass_g`.
+
+***
+
+*Downsampling Adelie-Chinstrap from dataset*  
+
+One final step is to take a quick look at the counts for our binary variable `species_rollup` that we created earlier to help us create our binary logistic regression outcome:
+
+```{r}
+table(penguins$species_rollup)
+```
+
+Unfortunately, it looks like there's a class imbalance here where there are almost double the amount of Adelie-Chinstrap individuals in our dataset than Gentoo individuals. This could impact our logistic regression outcome and eventual model performance. In order to create a more equal subset of individuals between the two classes, we can downsample the Adelie-Chinstrap group to match the number of Gentoo species at 119. In order to do this, we can run a function in the `caret` package called `downSample()`, which will randomly select 119 individuals from the Adelie-Chinstrap group to use for our model:
+
+```{r}
+penguins_rollup_factor <- factor(penguins$species_rollup)
+downsample_penguins <- downSample(penguins, penguins_rollup_factor, list = FALSE, yname = "Class")
+
+table(downsample_penguins$species_rollup)
+```
+
+Now, we have an equal share of 119 individuals in our new `downsample_penguins` dataset between our two groups. With these adjustments, we are now ready to start running our logistic regression models.
+
+```{r}
+downsample_penguins$penguins_species_fnl <- ifelse(downsample_penguins$species_rollup == 'Gentoo', 0, 1)
+```
+
+***
+
+*Running the logistic regression*  
+
+First, we'll need to split our `downsample_penguins` dataset into a training and testing set (80% training, 20% testing). This was necessary in order to measure our model performance on our holdout test set later on.  
+
+```{r}
+set.seed(123456)
+
+# utilizing one dataset for all four models
+penguins_partition <- createDataPartition(downsample_penguins$species_rollup, p=0.8, list=FALSE)
+penguins_training <- downsample_penguins[penguins_partition,]
+penguins_testing <- downsample_penguins[-penguins_partition,]
+```
+
+Next, after running a few preliminary models that didn't show large differences between the transformed variables I had created and those from the original dataset, I decided to keep the existing variables in order to ease interpretation of the log odds. Additionally, I decided to not use variables such as `bill_depth_mm`, `island`, `sex`, and `year`, since they appear to be overfitting the model and creating fitted probabilities that numerically turned out to be 0 or 1. Therefore, for the first model, I added three variables `bill_length_mm`, `flipper_length_mm`, and `body_mass_g` to the logistic regression:
+```{r, warning=FALSE}
+model1 <- glm(penguins_species_fnl ~ bill_length_mm +  flipper_length_mm + body_mass_g , data = penguins_training, family = binomial)
+summary(model1)
+```
+As we can see from the model summary, p-values for `flipper_length_mm` and `body_mass_g` fell below 0.05, where `bill_length_mm` was above this threshold. In my next model, I decided to run the `stepAIC()` function in order to conduct stepwise selection and identify the explanatory variables that were most statistically significant. However, before doing so, I did want to check my VIF scores in order to check multicollinearity. 
+```{r}
+# print variable inflation factor score
+print('VIF scores of predictors')
+
+VIF(model1)
+```
+
+Fortunately, we can see that all VIF scores are quite low (below 5), meaning that interactions with one another are quite low. In Model 2, I used stepwise selection to pare down the explanatory variables.
+
+```{r, warning=FALSE}
+model2 <- model1 %>% stepAIC(trace=FALSE)
+summary(model2)
+plot(model2$fitted.values)
+```
+As we can see, it doesn't look like StepAIC removed any of our less statistically significant variables, since they didn't meet the threshold. However, in model 3, I decided to remove `bill_length_mm` to see if this has an impact on our AIC score.
+
+```{r, warning=FALSE}
+model3 <- glm(penguins_species_fnl ~ flipper_length_mm + body_mass_g, data = penguins_training, family = binomial)
+summary(model3)
+```
+After running this third model, we can see a small improvement in the AIC. I also noticed through this process that `flipper_length_mm` seemed to be quite predictive of our bifurcated species variable. Therefore, I ran one final model which just exposed `flipper_length_mm` as the explanatory variable:
+
+```{r, warning=FALSE}
+model4 <- glm(penguins_species_fnl ~ flipper_length_mm, data = penguins_training, family = binomial)
+summary(model4)
+```
+This model showed a slight shift in AIC, but I do worry that if this model were to be used it may be overfitted to our training dataset. We can examine these models in the next part during the evaluation stage. However, I'll quickly breakdown some of the log odds information and interpret the variables of these logistic regression models.
+
+***
+
+*Interpreting the explanatory variables*  
+
+If we take a look at the initial model created (model #1) and examine the summary output, we can find the following:  
+
++ *Bill Length (mm)* -- if the bill length of an individual penguin in the dataset is increased by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species increases by exp(0.47), or 1.6.  
+
++ *Flipper Length (mm)* -- as the flipper length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.81), or 0.44.  
+
++ *Body Mass (g)* -- as the body mass of an individual penguin in the dataset increases by one gram, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.003), or 0.10.
 
 
 #### Part 2: Logistic Regression evaluation (AUC, TPR, FPR, TNR, FNR and Accuracy)
