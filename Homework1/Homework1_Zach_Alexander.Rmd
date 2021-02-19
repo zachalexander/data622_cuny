@@ -6,7 +6,7 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r libraries, warning=FALSE, message=FALSE, echo=FALSE}
@@ -37,6 +37,10 @@ require(mlogit)
 ***
 
 #### Part 1: Logistic Regression with binary outcome
+
+
+***
+
 
 **A) The penguin dataset has a 'species' column. Please check how many categories you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).**
 
@@ -248,48 +252,51 @@ penguins_training <- downsample_penguins[penguins_partition,]
 penguins_testing <- downsample_penguins[-penguins_partition,]
 ```
 
-Next, after running a few preliminary models that didn't show large differences between the transformed variables I had created and those from the original dataset, I decided to keep the existing variables in order to ease interpretation of the log odds. Additionally, I decided to not use variables such as `bill_depth_mm`, `island`, `sex`, and `year`, since they appear to be overfitting the model and creating fitted probabilities that numerically turned out to be 0 or 1. Therefore, for the first model, I added three variables `bill_length_mm`, `flipper_length_mm`, and `body_mass_g` to the logistic regression:
-```{r, warning=FALSE}
+Next, after running a few preliminary models that didn't show large differences between the transformed variables I had created and those from the original dataset, I decided to keep the existing variables in order to ease interpretation of the log odds. Additionally, I decided to not use variables such as `bill_depth_mm`, `island`, `sex`, and `year`, since they appear to be overfitting the model and creating fitted probabilities that numerically turned out to be 0 or 1. Therefore, for the first model, I added three variables `bill_length_mm`, `flipper_length_mm`, and `body_mass_g` to the logistic regression and used stepwise selection to determine if other variables should be removed:
+
+
+```{r, warning=FALSE, cache=TRUE}
 model1 <- glm(penguins_species_fnl ~ bill_length_mm +  flipper_length_mm + body_mass_g , data = penguins_training, family = binomial)
-summary(model1)
+
+model2 <- model1 %>% stepAIC(trace=FALSE)
+summary(model2)
 ```
-As we can see from the model summary, p-values for `flipper_length_mm` and `body_mass_g` fell below 0.05, where `bill_length_mm` was above this threshold. In my next model, I decided to run the `stepAIC()` function in order to conduct stepwise selection and identify the explanatory variables that were most statistically significant. However, before doing so, I did want to check my VIF scores in order to check multicollinearity. 
+As we can see, it doesn't look like StepAIC removed any of our less statistically significant variables, since they didn't meet the threshold. However, in model 3, I decided to remove `bill_length_mm` to see if this has an impact on our AIC score.  
+
+However, before doing so, I did want to check my VIF scores in order to check multicollinearity. 
 ```{r}
 # print variable inflation factor score
 print('VIF scores of predictors')
 
-VIF(model1)
+VIF(model2)
 ```
 
-Fortunately, we can see that all VIF scores are quite low (below 5), meaning that interactions with one another are quite low. In Model 2, I used stepwise selection to pare down the explanatory variables.
+Fortunately, we can see that all VIF scores are quite low (below 5), meaning that interactions with one another are quite low.
 
-```{r, warning=FALSE}
-model2 <- model1 %>% stepAIC(trace=FALSE)
-summary(model2)
-```
-As we can see, it doesn't look like StepAIC removed any of our less statistically significant variables, since they didn't meet the threshold. However, in model 3, I decided to remove `bill_length_mm` to see if this has an impact on our AIC score.
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, cache=TRUE}
 model3 <- glm(penguins_species_fnl ~ flipper_length_mm + body_mass_g, data = penguins_training, family = binomial)
 summary(model3)
 ```
 After running this third model, we can see a small increase in the AIC. I also noticed through this process that `flipper_length_mm` seemed to be quite predictive of our bifurcated species variable. Therefore, I ran one final model which just exposed `flipper_length_mm` as the explanatory variable:
 
-```{r, warning=FALSE}
+```{r, warning=FALSE, cache=TRUE}
 model4 <- glm(penguins_species_fnl ~ flipper_length_mm, data = penguins_training, family = binomial)
 summary(model4)
 ```
-This model showed a slight increase in AIC from our previous models, and I do worry that if this model were to be used it may be overfitted to our training dataset. We can examine these models in the next part during the evaluation stage. However, I'll quickly breakdown some of the log odds information and interpret the variables of these logistic regression models below.
+This model showed a slight increase in AIC from our previous models, and I do worry that if this model, or model #3 were to be used it may not yield as accurate predictions as model #1. We can examine these models in the next part during the evaluation stage. However, I'll quickly breakdown some of the log odds information and interpret the variables of these logistic regression models below.
 
 ***
 
-***Interpreting the explanatory variables***  
+**C) Provide variable interpretations in your model**  
 
-If we take a look at the initial model created (model #1) and examine the summary output, we can find the following:  
+***
 
-+ *Bill Length (mm)* -- as the bill length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species increases by exp(0.47), or 1.6.  
+Given our initial model turned out to be our best parsimonious model (based on AIC), if we examine the summary output, we can find the following:  
 
-+ *Flipper Length (mm)* -- as the flipper length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.81), or 0.44.  
++ *Bill Length (mm)* -- as the bill length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species increases by exp(0.39), or 1.47.  
+
++ *Flipper Length (mm)* -- as the flipper length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.75), or 0.47.  
 
 + *Body Mass (g)* -- as the body mass of an individual penguin in the dataset increases by one gram, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.003), or 0.10.
 
@@ -297,6 +304,8 @@ If we take a look at the initial model created (model #1) and examine the summar
 ***
 
 #### Part 2: Logistic Regression evaluation (AUC, TPR, FPR, TNR, FNR and Accuracy)  
+
+***
 
 **A) For your model from #1, please provide: AUC, Accuracy, TPR, FPR, TNR, FNR**
 
@@ -323,7 +332,7 @@ paste0('Accuracy on Training Set: ', sum(penguins_training$accuracy)/nrow(pengui
 
 Now, we can evaluate our chosen model #1 on our holdout testing set. Initially, we'll set our threshold at 0.5, to determine whether or not our predictions should be classified into the Gentoo category (less than or equal to 0.5) or Adelie-Chinstrap category (greater than 0.5):
 
-```{r}
+```{r, cache=TRUE}
 predictTest = predict(model1, type = "response", newdata = penguins_testing)
 penguins_testing$target = round(predictTest, 1)
 confusion_matrix <- table(penguins_testing$penguins_species_fnl, predictTest > 0.5)
@@ -332,7 +341,7 @@ confusion_matrix
 
 ***Calculating TPR, TNR, FPR, and FNR***  
 
-```{r}
+```{r, cache=TRUE}
 # tp = true positive
 # tn = true negative
 # fp = false positive
@@ -358,12 +367,12 @@ colnames(results) <- c('Measure', 'Value')
 
 results
 ```
-After calculating TPR, TNR, FPR, and FNR, it's a good sign to see that both FPR and FNR are quite low. Additionally, the model was very good at classifying penguins in the testing dataset that were of either the Adelie/Chinstrap species (predicted all of them correctly), and was close to classifying all Gentoo species correctly, with only one Gentoo penguin mistakenly being classified as an Adelie/Chinstrap species.
+After calculating TPR, TNR, FPR, and FNR, it's a good sign to see that both FPR and FNR are quite low. Additionally, the model was very good at classifying penguins in the testing dataset that were of either the Adelie/Chinstrap species (predicted all but one of them correctly), and classified all Gentoo species correctly.
 
 
 ***Accuracy***
 
-```{r}
+```{r, cache=TRUE}
 penguins_testing = penguins_testing %>%
   mutate(accuracy = 1*(round(target, 0) == round(penguins_species_fnl, 0)))
 
@@ -375,29 +384,40 @@ As we can see above, when checking the accuracy of the predictions on our testin
 
 We can plot an ROC curve and calculate our AUC by using the `pRoc` package. Below, we were able to plot our thresholds.
 
-```{r, warning=FALSE, message=FALSE, cache=TRUE}
+![I was having issues with caching when knitting to R, so had to take a picture instead of showing output!](C:/Users/zalexander/Desktop/data622_cunysps/Homework1/AUC-1.jpg)
+
+```{r, message=FALSE, warning=FALSE, echo=FALSE, eval=FALSE}
 roc(penguins_testing$penguins_species_fnl ~ predictTest, plot=TRUE, print.auc=TRUE, col='black', lwd=4, legacy.axes=TRUE)
 ```
 
-Finally, the AUC of our chosen model #1 is very good, with a value of 0.991, which is very close to 1 and supports our calculation of accuracy that almost all predictions were correct.  
+
+Finally, the AUC of our chosen model #1 is very good, with a value of 0.994, which is very close to 1 and supports our calculation of accuracy that almost all predictions were correct.  
 
 
 ***
 
-#### Part 3: Multinomial Logistic Regression  
+#### Part 3: Multinomial Logistic Regression
+
+***
 
 **A) Please fit a multinomial logistic regression where your outcome variable is 'species'.**  
 **B) Please be sure to evaluate the independent variables appropriately to fit your best parsimonious model.**  
 
+***
+
 For this last part, we'll use the initial `species` variable to create a multinomial logistic regression model. This way, we do not have to bifurcate our species into two categories, but instead use a different type of logistic regression to obtain predictions for all three species. In order to do this, I decided to take our initial training dataset from Part 1, since it is already split accordingly, and use the `multinom()` function from the `broom` package to run our first model. 
 
 ```{r, echo=FALSE}
-penguins_training_mod <- penguins_testing %>% dplyr::select(-target, -accuracy)
-penguins_training_mod$outcome_level = relevel(penguins_training_mod$species, ref = "Gentoo")
+penguins_training_mod <- penguins_training %>% dplyr::select(-target, -accuracy)
+penguins_training_mod$outcome_level = relevel(penguins_training_mod$species, ref = "Chinstrap")
 ```
 
+***
+
+***Model 1***
+
 In this initial model, I kept all variables in, just to get a baseline AIC to compare future models on the training data. 
-```{r}
+```{r, cache=TRUE}
 multinom_model1 <- multinom(outcome_level ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g + sex + year + bill_length_transformed + flipper_length_transformed, data = penguins_training_mod)
 tidy(multinom_model1, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)
 summary(multinom_model1)
@@ -405,31 +425,84 @@ summary(multinom_model1)
 
 We can see that the AIC value is around 36, and when we look at the p-values and summary statistics, we can immediately see that it'll be best to remove variables such as `year` and `sex`, both of which didn't perform well in our binomial logistic regression earlier, as well as `bill_length_transformed` and `flipper_length_transformed`, both of which have high p-values here as well.  
 
+***
+
+***Model 2***
+
 When we re-run the model, removing these variables, we can see that there is an improvement in AIC (from 36 to 20). However, we'll continue to remove a few variables to see if we can improve our model even more.
-```{r}
+```{r, cache=TRUE}
 multinom_model2 <- multinom(outcome_level ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data = penguins_training_mod)
 tidy(multinom_model2, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)
 summary(multinom_model2)
 ```
 
+***
+
+***Model 3***
 
 In our third iteration of our model, we decided to remove `flipper_length_mm`, which seemed to have the highest p-value and was likely exposing our model to multicollinearity issues with `body_mass_g`, which we could see from our initial variable examination earlier in our model building.  
 
 
-```{r}
+```{r, cache=TRUE}
 multinom_model3 <- multinom(outcome_level ~ bill_length_mm + bill_depth_mm  + body_mass_g, data = penguins_training_mod)
 tidy(multinom_model3, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)
 summary(multinom_model3)
 ```
 
-We can see that by removing `flipper_length_mm`, AIC continues to improve (dropping from 20 to 16). In our final iteration, we'll remove `bill_depth_mm` given additional multicollinearity issues `body_mass_g`.
-
-```{r}
-multinom_model4 <- multinom(outcome_level ~ bill_length_mm  + body_mass_g, data = penguins_training_mod)
-tidy(multinom_model4, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)
-summary(multinom_model4)
-```
-
-This final model yielded our lowest AIC at 12.8, and contains `bill_length_mm` and `body_mass_g` as our chosen independent variables for our best parsimonious model.
+We can see that by removing `flipper_length_mm`, AIC continues to improve (dropping from 20 to 16). **This final model yielded our lowest AIC and contains `bill_length_mm` `bill_depth_mm` and `body_mass_g` as our chosen independent variables for our best parsimonious model**.  
 
 ***
+
+**C) Please be sure to interpret your variables in the model** 
+
+***
+
+
+
+Given our third multinomial logisitic regression model turned out to be our best parsimonious model (based on AIC), if we examine the summary output, we can find the following:  
+
++ *Bill Length (mm)* -- A one millimeter increase in bill length is associated with the decrease in the log odds of being classified as the Adelie species vs. Gentoo species in the amount of 48.55. Similarly, a one millimeter increase in bill length is associated with the increase in the log odds of being classified as the Chinstrap species vs. Gentoo species by 10.22. Essentially, as bill length increases, it's less likely to be classified as an Adelie species than Gentoo species. Similarly, as bill length increases, the log odds become more certain to be classified as a Chinstrap species than Gentoo species. This can be confirmed by the initial overlapping distributions represented in the data exploration part of the assignment (Part 1). 
+
++ *Bill Depth (mm)* -- A one millimeter increase in bill depth is associated with the increase in the log odds of being classified as the Adelie species vs. Gentoo species in the amount of 97.40. Similarly, a one millimeter increase in bill length is associated with the increase in the log odds of being classified as the Chinstrap species vs. Gentoo species by 4.55. Essentially, as bill depth increases, it's more likely to be classified as an Adelie species than Gentoo species. Similarly, as bill depth increases, the log odds become more certain to be classified as a Chinstrap species than Gentoo species. This can be confirmed by the initial overlapping distributions represented in the data exploration part of the assignment (Part 1). 
+
++ *Body Mass (g)* -- A one gram increase in body mass is associated with the increase in the log odds of being classified as the Adelie species vs. Gentoo species in the amount of 0.09. Similarly, a one gram increase in body mass is associated with the decrease in the log odds of being classified as the Chinstrap species vs. Gentoo species by 0.11. Essentially, as body mass increases, it's more likely to be classified as an Gentoo species over either Adelie or Chinstrap species. This can be confirmed by the initial overlapping distributions represented in the data exploration part of the assignment (Part 1). 
+
+***
+
+#### Part 4: Extra Credit  
+
+***
+
+**Extra credit: what would be some of the fit statistics you would want to evaluate for your model in question #3? Feel free to share whatever you can provide.**  
+
+***
+
+Before discussing fit statistics, we can first create predictions on our holdout test set based on our model #3 in the last section. We can create a dataframe that shows the computed probabilities for an individual being classified into each class.
+
+```{r}
+predictTest_mod = predict(multinom_model3, type = "probs", newdata = penguins_testing)
+predictTest_mod = data.frame(predictTest_mod)
+```
+
+Here's the first five values of the dataframe:
+
+```{r}
+head(predictTest_mod)
+```
+As we can see above, probabilities falling closer to 1 will be utilized for classification. Therefore, if we take the maximum value of the three columns for each row, we can then estimate a classification for our target set:
+
+```{r}
+target_test <- colnames(predictTest_mod)[apply(predictTest_mod,1,which.max)]
+penguins_testing$target = target_test
+
+cmx_test <- table(penguins_testing$target, penguins_testing$target == penguins_testing$species)
+cmx_test
+```
+
+We can see from the confusion matrix generated, that the model estimated the correct classification for all individuals in our test set. This indicates that our model is working quite well.  
+
+***
+
+**Fit Statistics for Multinomial Logisitic Regression**  
+
+Some of the fit statistics that you'd want to evaluate for the model produced in part 3 would be based on the predicted results. For instance, now that we have these predictions, we could test the **goodness of fit** by running  a Pearson's Chi-squared test on these predictions and the categories. This would produce an interpretable $X^2$ value. It would also be possible to calculate a psuedo R square values for each of our species -- we'd interpret it a bit differently than traditional OLS, but would be available for us to make some assumptions about the proportion of variance of species that can be explained by the independent variables.

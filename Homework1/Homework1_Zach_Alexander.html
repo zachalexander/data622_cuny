@@ -420,6 +420,7 @@ summary {
 <hr />
 <div id="part-1-logistic-regression-with-binary-outcome" class="section level4">
 <h4>Part 1: Logistic Regression with binary outcome</h4>
+<hr />
 <p><strong>A) The penguin dataset has a ‘species’ column. Please check how many categories you have in the species column. Conduct whatever data manipulation you need to do to be able to build a logistic regression with binary outcome. Please explain your reasoning behind your decision as you manipulate the outcome/dependent variable (species).</strong></p>
 <hr />
 <p>First, we’ll save the penguin dataset as a tibble so we can manipulate it easier in the next steps:</p>
@@ -497,43 +498,10 @@ table(downsample_penguins$species_rollup)</code></pre>
 penguins_partition &lt;- createDataPartition(downsample_penguins$species_rollup, p=0.8, list=FALSE)
 penguins_training &lt;- downsample_penguins[penguins_partition,]
 penguins_testing &lt;- downsample_penguins[-penguins_partition,]</code></pre>
-<p>Next, after running a few preliminary models that didn’t show large differences between the transformed variables I had created and those from the original dataset, I decided to keep the existing variables in order to ease interpretation of the log odds. Additionally, I decided to not use variables such as <code>bill_depth_mm</code>, <code>island</code>, <code>sex</code>, and <code>year</code>, since they appear to be overfitting the model and creating fitted probabilities that numerically turned out to be 0 or 1. Therefore, for the first model, I added three variables <code>bill_length_mm</code>, <code>flipper_length_mm</code>, and <code>body_mass_g</code> to the logistic regression:</p>
+<p>Next, after running a few preliminary models that didn’t show large differences between the transformed variables I had created and those from the original dataset, I decided to keep the existing variables in order to ease interpretation of the log odds. Additionally, I decided to not use variables such as <code>bill_depth_mm</code>, <code>island</code>, <code>sex</code>, and <code>year</code>, since they appear to be overfitting the model and creating fitted probabilities that numerically turned out to be 0 or 1. Therefore, for the first model, I added three variables <code>bill_length_mm</code>, <code>flipper_length_mm</code>, and <code>body_mass_g</code> to the logistic regression and used stepwise selection to determine if other variables should be removed:</p>
 <pre class="r"><code>model1 &lt;- glm(penguins_species_fnl ~ bill_length_mm +  flipper_length_mm + body_mass_g , data = penguins_training, family = binomial)
-summary(model1)</code></pre>
-<pre><code>## 
-## Call:
-## glm(formula = penguins_species_fnl ~ bill_length_mm + flipper_length_mm + 
-##     body_mass_g, family = binomial, data = penguins_training)
-## 
-## Deviance Residuals: 
-##      Min        1Q    Median        3Q       Max  
-## -1.84085  -0.01520  -0.00003   0.00726   2.26676  
-## 
-## Coefficients:
-##                     Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)       131.395595  37.845436   3.472 0.000517 ***
-## bill_length_mm      0.292045   0.205399   1.422 0.155071    
-## flipper_length_mm  -0.613734   0.183825  -3.339 0.000842 ***
-## body_mass_g        -0.004206   0.002519  -1.670 0.094981 .  
-## ---
-## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
-## 
-## (Dispersion parameter for binomial family taken to be 1)
-## 
-##     Null deviance: 266.169  on 191  degrees of freedom
-## Residual deviance:  19.572  on 188  degrees of freedom
-## AIC: 27.572
-## 
-## Number of Fisher Scoring iterations: 10</code></pre>
-<p>As we can see from the model summary, p-values for <code>flipper_length_mm</code> and <code>body_mass_g</code> fell below 0.05, where <code>bill_length_mm</code> was above this threshold. In my next model, I decided to run the <code>stepAIC()</code> function in order to conduct stepwise selection and identify the explanatory variables that were most statistically significant. However, before doing so, I did want to check my VIF scores in order to check multicollinearity.</p>
-<pre class="r"><code># print variable inflation factor score
-print(&#39;VIF scores of predictors&#39;)</code></pre>
-<pre><code>## [1] &quot;VIF scores of predictors&quot;</code></pre>
-<pre class="r"><code>VIF(model1)</code></pre>
-<pre><code>##    bill_length_mm flipper_length_mm       body_mass_g 
-##          1.592854          1.303138          1.310676</code></pre>
-<p>Fortunately, we can see that all VIF scores are quite low (below 5), meaning that interactions with one another are quite low. In Model 2, I used stepwise selection to pare down the explanatory variables.</p>
-<pre class="r"><code>model2 &lt;- model1 %&gt;% stepAIC(trace=FALSE)
+
+model2 &lt;- model1 %&gt;% stepAIC(trace=FALSE)
 summary(model2)</code></pre>
 <pre><code>## 
 ## Call:
@@ -542,25 +510,33 @@ summary(model2)</code></pre>
 ## 
 ## Deviance Residuals: 
 ##      Min        1Q    Median        3Q       Max  
-## -1.84085  -0.01520  -0.00003   0.00726   2.26676  
+## -2.22345  -0.00756  -0.00001   0.00331   2.12733  
 ## 
 ## Coefficients:
-##                     Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)       131.395595  37.845436   3.472 0.000517 ***
-## bill_length_mm      0.292045   0.205399   1.422 0.155071    
-## flipper_length_mm  -0.613734   0.183825  -3.339 0.000842 ***
-## body_mass_g        -0.004206   0.002519  -1.670 0.094981 .  
+##                     Estimate Std. Error z value Pr(&gt;|z|)   
+## (Intercept)       154.110258  46.893897   3.286  0.00101 **
+## bill_length_mm      0.391771   0.211737   1.850  0.06427 . 
+## flipper_length_mm  -0.751099   0.239089  -3.142  0.00168 **
+## body_mass_g        -0.003938   0.002432  -1.619  0.10536   
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
 ##     Null deviance: 266.169  on 191  degrees of freedom
-## Residual deviance:  19.572  on 188  degrees of freedom
-## AIC: 27.572
+## Residual deviance:  17.618  on 188  degrees of freedom
+## AIC: 25.618
 ## 
 ## Number of Fisher Scoring iterations: 10</code></pre>
 <p>As we can see, it doesn’t look like StepAIC removed any of our less statistically significant variables, since they didn’t meet the threshold. However, in model 3, I decided to remove <code>bill_length_mm</code> to see if this has an impact on our AIC score.</p>
+<p>However, before doing so, I did want to check my VIF scores in order to check multicollinearity.</p>
+<pre class="r"><code># print variable inflation factor score
+print(&#39;VIF scores of predictors&#39;)</code></pre>
+<pre><code>## [1] &quot;VIF scores of predictors&quot;</code></pre>
+<pre class="r"><code>VIF(model2)</code></pre>
+<pre><code>##    bill_length_mm flipper_length_mm       body_mass_g 
+##          2.159405          2.145169          1.101884</code></pre>
+<p>Fortunately, we can see that all VIF scores are quite low (below 5), meaning that interactions with one another are quite low.</p>
 <pre class="r"><code>model3 &lt;- glm(penguins_species_fnl ~ flipper_length_mm + body_mass_g, data = penguins_training, family = binomial)
 summary(model3)</code></pre>
 <pre><code>## 
@@ -570,23 +546,23 @@ summary(model3)</code></pre>
 ## 
 ## Deviance Residuals: 
 ##      Min        1Q    Median        3Q       Max  
-## -1.53257  -0.02456  -0.00006   0.00999   2.76049  
+## -1.67952  -0.02032  -0.00003   0.00835   2.73596  
 ## 
 ## Coefficients:
 ##                     Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)       132.735289  37.934178   3.499 0.000467 ***
-## flipper_length_mm  -0.586473   0.181916  -3.224 0.001265 ** 
-## body_mass_g        -0.002784   0.002034  -1.369 0.170990    
+## (Intercept)       140.502135  42.189796   3.330 0.000868 ***
+## flipper_length_mm  -0.622712   0.198249  -3.141 0.001683 ** 
+## body_mass_g        -0.002802   0.001918  -1.461 0.143913    
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
 ##     Null deviance: 266.169  on 191  degrees of freedom
-## Residual deviance:  22.181  on 189  degrees of freedom
-## AIC: 28.181
+## Residual deviance:  23.408  on 189  degrees of freedom
+## AIC: 29.408
 ## 
-## Number of Fisher Scoring iterations: 9</code></pre>
+## Number of Fisher Scoring iterations: 10</code></pre>
 <p>After running this third model, we can see a small increase in the AIC. I also noticed through this process that <code>flipper_length_mm</code> seemed to be quite predictive of our bifurcated species variable. Therefore, I ran one final model which just exposed <code>flipper_length_mm</code> as the explanatory variable:</p>
 <pre class="r"><code>model4 &lt;- glm(penguins_species_fnl ~ flipper_length_mm, data = penguins_training, family = binomial)
 summary(model4)</code></pre>
@@ -597,35 +573,37 @@ summary(model4)</code></pre>
 ## 
 ## Deviance Residuals: 
 ##      Min        1Q    Median        3Q       Max  
-## -1.97701  -0.04666  -0.00012   0.00982   2.44822  
+## -2.07052  -0.04469  -0.00018   0.01180   2.38666  
 ## 
 ## Coefficients:
 ##                   Estimate Std. Error z value Pr(&gt;|z|)    
-## (Intercept)       139.4698    35.1134   3.972 7.13e-05 ***
-## flipper_length_mm  -0.6782     0.1697  -3.997 6.41e-05 ***
+## (Intercept)       141.4275    37.5453   3.767 0.000165 ***
+## flipper_length_mm  -0.6867     0.1811  -3.793 0.000149 ***
 ## ---
 ## Signif. codes:  0 &#39;***&#39; 0.001 &#39;**&#39; 0.01 &#39;*&#39; 0.05 &#39;.&#39; 0.1 &#39; &#39; 1
 ## 
 ## (Dispersion parameter for binomial family taken to be 1)
 ## 
 ##     Null deviance: 266.169  on 191  degrees of freedom
-## Residual deviance:  24.588  on 190  degrees of freedom
-## AIC: 28.588
+## Residual deviance:  26.192  on 190  degrees of freedom
+## AIC: 30.192
 ## 
 ## Number of Fisher Scoring iterations: 9</code></pre>
-<p>This model showed a slight increase in AIC from our previous models, and I do worry that if this model were to be used it may be overfitted to our training dataset. We can examine these models in the next part during the evaluation stage. However, I’ll quickly breakdown some of the log odds information and interpret the variables of these logistic regression models below.</p>
+<p>This model showed a slight increase in AIC from our previous models, and I do worry that if this model, or model #3 were to be used it may not yield as accurate predictions as model #1. We can examine these models in the next part during the evaluation stage. However, I’ll quickly breakdown some of the log odds information and interpret the variables of these logistic regression models below.</p>
 <hr />
-<p><strong><em>Interpreting the explanatory variables</em></strong></p>
-<p>If we take a look at the initial model created (model #1) and examine the summary output, we can find the following:</p>
+<p><strong>C) Provide variable interpretations in your model</strong></p>
+<hr />
+<p>Given our initial model turned out to be our best parsimonious model (based on AIC), if we examine the summary output, we can find the following:</p>
 <ul>
-<li><p><em>Bill Length (mm)</em> – as the bill length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species increases by exp(0.47), or 1.6.</p></li>
-<li><p><em>Flipper Length (mm)</em> – as the flipper length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.81), or 0.44.</p></li>
+<li><p><em>Bill Length (mm)</em> – as the bill length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species increases by exp(0.39), or 1.47.</p></li>
+<li><p><em>Flipper Length (mm)</em> – as the flipper length of an individual penguin in the dataset increases by one millimeter, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.75), or 0.47.</p></li>
 <li><p><em>Body Mass (g)</em> – as the body mass of an individual penguin in the dataset increases by one gram, then the odds of the individual being of the Adelie or Chinstrap species decreases by exp(-0.003), or 0.10.</p></li>
 </ul>
 <hr />
 </div>
 <div id="part-2-logistic-regression-evaluation-auc-tpr-fpr-tnr-fnr-and-accuracy" class="section level4">
 <h4>Part 2: Logistic Regression evaluation (AUC, TPR, FPR, TNR, FNR and Accuracy)</h4>
+<hr />
 <p><strong>A) For your model from #1, please provide: AUC, Accuracy, TPR, FPR, TNR, FNR</strong></p>
 <hr />
 <p>Although we won’t evaluate the performance of this model on the training dataset, it is good to check to make sure these functions are working properly before subjecting this to the testing set. Therefore, below we will examine the predictions and confusion matrix for our model of choice (model #1):</p>
@@ -635,7 +613,7 @@ table(penguins_training$penguins_species_fnl, predictTrain &gt; 0.5)</code></pre
 <pre><code>##    
 ##     FALSE TRUE
 ##   0    95    1
-##   1     3   93</code></pre>
+##   1     2   94</code></pre>
 <p>We can also check the accuracy of the predictions on the training set:</p>
 <pre class="r"><code>penguins_training = penguins_training %&gt;%
   mutate(accuracy = 1*(round(target, 0) == round(penguins_species_fnl, 0)))
@@ -683,7 +661,7 @@ results</code></pre>
 ## 2  True Negative Rate (TNR) 0.95833333
 ## 3 False Positive Rate (FPR) 0.04166667
 ## 4 False Negative Rate (FNR) 0.00000000</code></pre>
-<p>After calculating TPR, TNR, FPR, and FNR, it’s a good sign to see that both FPR and FNR are quite low. Additionally, the model was very good at classifying penguins in the testing dataset that were of either the Adelie/Chinstrap species (predicted all of them correctly), and was close to classifying all Gentoo species correctly, with only one Gentoo penguin mistakenly being classified as an Adelie/Chinstrap species.</p>
+<p>After calculating TPR, TNR, FPR, and FNR, it’s a good sign to see that both FPR and FNR are quite low. Additionally, the model was very good at classifying penguins in the testing dataset that were of either the Adelie/Chinstrap species (predicted all but one of them correctly), and classified all Gentoo species correctly.</p>
 <p><strong><em>Accuracy</em></strong></p>
 <pre class="r"><code>penguins_testing = penguins_testing %&gt;%
   mutate(accuracy = 1*(round(target, 0) == round(penguins_species_fnl, 0)))
@@ -693,53 +671,53 @@ paste0(&#39;Accuracy on Training Set: &#39;, sum(penguins_testing$accuracy)/nrow
 <p>As we can see above, when checking the accuracy of the predictions on our testing set, we can see that model 1 was roughly 98% accurate in predicting whether or not the penguin was classified as either a Gentoo or Adelie/Chinstrap species.</p>
 <p><strong><em>Calculating AUC</em></strong></p>
 <p>We can plot an ROC curve and calculate our AUC by using the <code>pRoc</code> package. Below, we were able to plot our thresholds.</p>
-<pre class="r"><code>roc(penguins_testing$penguins_species_fnl ~ predictTest, plot=TRUE, print.auc=TRUE, col=&#39;black&#39;, lwd=4, legacy.axes=TRUE)</code></pre>
-<p><img src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABUAAAAPACAMAAADDuCPrAAAA1VBMVEUAAAAAADoAAGYAOjoAOmYAOpAAZpAAZrY6AAA6OgA6Ojo6OmY6ZmY6ZpA6ZrY6kJA6kLY6kNtmAABmADpmOgBmOjpmZjpmZmZmZpBmkLZmkNtmtttmtv+QOgCQZgCQZjqQZmaQZpCQkJCQkLaQtraQttuQtv+Q29uQ2/+pqam2ZgC2Zjq2kDq2kGa2kLa2tpC2tra2ttu227a229u22/+2///bkDrbkGbbtmbbtpDbtrbb25Db27bb29vb2//b////tmb/25D/27b/29v//7b//9v////4a/gBAAAACXBIWXMAAB2HAAAdhwGP5fFlAAAgAElEQVR4nO3da2PbRtqYYTKxayVep7XrrNbrpN62cZtVXjdKnSi2a8Xygfr/P6kESUkUxROGAAbz4Lo+rCSKomgsdAeHwWB0CUCSUe43AFAqAQVIJKAAiQQUIJGAAiQSUIBEAgqQSEABEgkoQCIBBUgkoACJBBQgkYACJBJQgEQCCpBIQAESCShAIgEFSCSgAIkEFCCRgAIkElCARAIKkEhAARIJKEAiAQVIJKAAiQQUIJGAAiQSUIBEAgqQSEABEgkoQCIBBUgkoACJBBQgkYACJBJQgEQCCpBIQAESCShAIgEFSCSgAIkEFCCRgAIkElCARAIKkEhAARIJKEAiAQVIJKAAiQQUIJGAAiQSUIBEAgqQSEABEgkoQCIBBUgkoACJBBQgkYACJBJQgEQCCpBIQAESCShAIgEFSCSgAIkEFCCRgAIkElCARAIKkEhAARIJKEAiAQVIJKAAiQQUIJGAAiQSUIBE/Q7oCKAxzSeq8VdsUO6lDSz797//nfstHKjxRjX9gk1q4T8YQKppP3O/hcMIKJBJ8f0UUCCT8vspoEAeAfopoEAWEfpZYkAn5+9OT09/O/+Q8LMCCv0Qop/FBfT9i6UBBI9e1/1xAYVeiNHPwgL66enKGKx7P9d7AQGFPgjSz7ICenFURfPb47lvqi/GP9R6BQGFHojSz6IC+uXJNJgvlx54Ow3qV3/UeQkBhfzC9LOogJ7dyWWV1Md1XkJAIbs4/SwpoJMfR6PVHfaL0eh+nbPxAgq5BepnSQGdbm7e2V9f99g2AgqZReqngAJdCtXPkgI63YUfr45asgsPRYnVz5ICenlyp5bVYdEHdV5CQCGnYP0sKqAfj6YF/X3pgU/Tft7ZKN1KQCGjaP0sKqDVOKZpMY9/Oq38Oh9JX2sUk4BCRuH6WVZAL98crVzKOX5e7wUEFLKJ18/CAno5ebWc0PGzujMyCSjkErCfpQV0avL+9NXx8fGz09cJ89kJKGQSsZ8FBvQgAgp5hOyngMbR5K1aoUmXUfspoFHk/hOBrWL2U0CDyP3nATvk/hNpR+EB3X4t/HD+bxRQ+i73n0g7BDSErv8YoK7cfyPtCB3Qu+L+3wj9lvtvpB2FB/Ty8/lfdZ4e9/9G6LfcfyPtKD2gNcX9vxF6LfefSEsENITgaynlCjr+84qAhiCg9FPwfgpoDAJKL0Xvp4DGIKD0Ufh+CmgMAkoPxe+ngMYgoPTPAPopoDEIKL0zhH6WFNAvT9aOL3Ml0qWA0j+D6KeAxiCg9Mww+llSQC8/PRXQDQSUfhlIP4sK6OXkx7q3MV4VNTECSq8MpZ9lBXRW0B8OeYGoiRFQ+mQw/SwsoLWnr1sVNTECSo8Mp5+lBfTy4rCd+KiJEVD6Y0D9LC6g0534QzZBoyZGQOmNIfWzuIBefjw+/l/pPx01MQJKXwyqn+UF9DBREyOg9MSw+imgMQgo/TCwfgpoDAJKLwytnwIag4DSB4Prp4DGIKD0wPD6KaAxCCj5DbCfAhqDgJLdEPspoDEIKLkNsp8CGoOAktkw+ymgMQgoeQ20nwIag4CS1VD7KaAxCCg5DbafAhqDgJLRcPspoDEIKPkMuJ8CGoOAks2Q+ymgMQgouQy6nwIag4CSybD7KaAxCCh5DLyfAhqDgJLF0PspoDEIKDkMvp8CGoOAkoF+CmgMAkr39FNAgxBQOqeflwIahIDSNf2sCGgIAkrH9HNGQEMQULqln3MCGoKA0in9XBDQEASULunnFQENQUDpkH5eE9AQBJTu6OcNAQ1BQOmMfi4R0BAElK7o5zIBDUFA6Yh+3iKgIQgo3dDP2wQ0BAGlE/q5QkBDEFC6oJ+rBDQEAaUD+nmHgIYgoLRPP+8S0BAElNbp5xoCGoKA0jb9XEdAQxBQWqafawloCAJKu/RzPQENQUBplX5uIKAhCCht0s9NBDQEAaVF+rmRgIYgoLRHPzcT0BAElNbo5xYCGoKA0hb93EZAQxBQWqKfWwloCAJKO/RzOwENQUBphX7uIKAhCCht0M9dBDQEAaUF+rmTgIYgoDRPP3cT0BAElMbp5x4ENAQBpWn6uQ8BDUFAaZh+7kVAQxBQmqWf+xHQEASURunnngQ0BAGlSfq5LwENQUBpkH7uTUBDEFCao5/7E9AQBJTG6GcNAhqCgNIU/axDQEMQUBqin7UIaAgCSjP0sx4BDUFAaYR+1iSgIQgoTdDPugQ0BAGlAfpZm4CGIKAcTj/rE9AQBJSD6WcCAQ1BQDmUfqYQ0BAElAPpZxIBDUFAOYx+phHQEASUg+hnIgENQUA5hH6mEtAQBJQD6GcyAQ1BQEmnn+kENAQBJZl+HkBAQxBQUunnIQQ0BAElkX4eREBDEFDS6OdhBDQEASWJfh5IQEMQUFLo56EENAQBJYF+HkxAQxBQ6tPPwwloCAJKbfrZAAENQUCpSz+bIKAhCCg16WcjBDQEAaUe/WyGgIYgoNSinw0R0BAElDr0sykCGoKAUoN+NqbcgE7e//ZX7R+KmhgBZX/62ZzSAvru9PT36uOnp1Uvxv+s+eNREyOg7E0/G1RWQN8cVZW4/+Hy4mhRjOnndURNjICyL/1sUlEBPVtk4sGXJ9Otz+Pjb6rPa71C1MQIKHvSz0aVFNCP083Oez/9Ot15//to9Lh6pCrqD3VeImpiBJT96GezSgroyXyPffLjzYbnSc1N0KiJEVD2op8NKyigVThnm5sX0/33n+ePTTdKax0FjZoYAWUf+tm0ggL65cnoqz9ufXLr071ETYyAsgf9bJyAhiCg7KafzSsooNNd+Pme+3S/3S78bQLKTvrZgoICen3GaPpxfhJ+dhreSaRLAWU3/WxDSQG9mBbiu/PzX0ajb2+2RQ1jqggoO+hnK0oK6GzTc3b50f+bhvPR6emL2pciRU2MgLKdfrajqIBOfplVYrr1eXVNUr1TSALKQOlnS4oK6OXl+399+/BZtc355/xi+Ef1LoUXUAZJP9tSWEBvTN796/in2vPZRU2MgLKFfram2ICmiZoYAWUz/WyPgIYgoGykny0S0BAElE30s00CGoKAsoF+tqrwgG6/Fn60RodvrkOx/3Wk0892CWgIsf91JNPPloUO6F1REyOgrKOfbSs8oJefz2uNBY2aGAFlDf1sXekBrSlqYgSUu/SzfQIagoByh352QEBDEFBW6WcXCgzo5Pzd6enpb+c15xGZiZoYAWWFfnaitIC+f7E0JOnR67o/HjUxAspt+tmNsgL66enKqM57P9d7gaiJEVBu0c+OFBXQi9kkoN8ez31TfTGudUcPAWUQ9LMrJQX0y5NpMF8uPfD2qO6U9FETI6As0c/OlBTQszu5rJL6uM5LRE2MgHJDP7tTUEAnP969BedFzbvKRU2MgHJNPztUUEDXXffuWvg5AeWKfnZJQEMQUBb0s1MFBXS6Cz9eHbVkF35OQJnTz24VFNDLkzu1rA6LPqjzElETI6DM6GfHSgrox6NpQX9feuDTtJ93Nkq3ipoYAaWin10rKaDVOKZpMY9/Oq38Oh9JX2sUk4ASmX52rqiAXr45WrmUc/y83gtETYyAop85lBXQy8mr5YSOn9WdkSlqYgQU/cyhsIBOTd6fvjo+Pn52+jphPruoiRFQ9DOH8gJ6kKiJEdDB088sBDQEAR06/cxDQEMQ0IHTz0wENAQBHTb9zEVAQxDQQdPPbAQ0BAEdMv3MR0BDENAB08+MBDQEAR0u/cxJQEMQ0MHSz6wENAQBHSr9zEtAQxDQgdLPzAQ0BAEdJv3MTUBDENBB0s/sBDQEAR0i/cxPQEMQ0AHSzx4Q0BAEdHj0sw8ENAQBHRz97AUBDUFAh0Y/+0FAQxDQgdHPnhDQEAR0WPSzLwQ0BAEdFP3sDQENQUCHRD/7Q0BDENAB0c8eEdAQBHQ49LNPBDQEAR0M/ewVAQ1BQIdCP/tFQEMQ0IHQz54R0BAEdBj0s28ENAQBHQT97B0BDUFAh0A/+0dAQxDQAdDPHhLQEAQ0Pv3sIwENQUDD089eEtAQBDQ6/ewnAQ1BQIPTz54S0BAENDb97CsBDUFAQ9PP3hLQEAQ0Mv3sLwENQUAD088eE9AQBDQu/ewzAQ1BQMPSz14T0BAENCr97DcBDUFAg9LPnhPQEAQ0Jv3sOwENQUBD0s/eE9AQBDQi/ew/AQ1BQAPSzwIIaAgCGo9+lkBAQxDQcPSzCAIagoBGo59lENAQBDQY/SyEgIYgoLHoZykENAQBDUU/iyGgIQhoJPpZDgENQUAD0c+CCGgIAhqHfpZEQEMQ0DD0sygCGoKARqGfZRHQEAQ0CP0sjICGIKAx6GdpBDQEAQ1BP4sjoCEIaAT6WR4BDUFAA9DPAgloCAJaPv0skYCGIKDF088iCWgIAlo6/SyTgIYgoIXTz0IJaAgCWjb9LJWAhiCgRdPPYgloCAJaMv0sl4CGIKAF08+CCWgIAlou/SyZgIYgoMXSz6IJaAgCWir9LJuAhiCghdLPwgloCAJaJv0snYCGIKBF0s/iCWgIAloi/SyfgIYgoAXSzwAENAQBLY9+RiCgIQhocfQzBAENQUBLo58xCGgIAloY/QxCQEMQ0LLoZxQCGoKAFkU/wxDQEAS0JPoZh4CGIKAF0c9ABDQEAS2HfkYioCEIaDH0MxQBDUFAS6GfsRQb0M/vTl9/qP1TURMjoIXQz2AKC+j777/6Y/ph8upo1ot7L2v+fNTECGgZ9DOaogI6eTEaVQGd/HgVjNF39bZCoyZGQIugn+GUFNBZN6cBnX0cHx8fV5uhD2q9RNTECGgJ9DOekgJ6MS3Ef/kw//i4emDyH9OQ/lznJaImRkALoJ8BlRTQk0U3T262O09qboJGTYyA9p9+RlRQQL88mW9uXn2sfDwa3a9zFDRqYgS09/QzpLICOjsFf/XxcuXzfURNjID2nX7GVGBAJz8K6CoB7Tn9DKqggFYn33+oPjm52YW/GNmFrwhov+lnVAUF9PJsPgq0OvC5OHNUNfVxnZeImhgB7TX9DKukgE7310f3fr+clXQ+jOkXw5jmBLTP9DOukgJ6eVGNnH/40/n5f0xL+uzXF0ejmhugAkr39DOwogJa7byvqNdPAaVz+hlZWQG9nkVkwWQiCwLaW/oZWmEBnfr86/H33049/MdPprO7IqB9pZ+xZQro5Lemf+1+oiZGQHtKP4PLFNAvT0YPXzf9m/cQNTEC2k/6GV2+gE496ryhURMjoL2kn+HlOgb69unsD3786Pemf/9WURMjoH2kn/HlO4k0efXNvKHP/kr/ZduvhV8d8xQ3MbH/dYXSzwHIehb+qqFfP6t/Pn1OQOdi/+vKpJ9DkHsY0+fr28MlNdRsTHMC2jv6OQi5A3p53dBx0mbo5/NaBwCiJkZA+0Y/hyF/QN++uPrrrzcvSJKoiRHQntHPgcgc0LffL3bg37/opKBREyOg/aKfQ5EzoIttz8W+ezW3Z717FCeImhgB7RX9HIxsAX2/2HO/GQj68Wi/E0KT83enp6e/naccMo2aGAHtE/0cjqxXIt2eTWmvM+rvr4+YjlKuZIqaGAHtEf0ckIwBXT3tPn1s1/2NPj1dGdV5r+ZR06iJEdD+0M8hyRbQNddwnu/6qdmM9KNvj+dmg/DHP9R7c0ETI6C9oZ+Dkn8Y0/5mm63LO/1vj0b1xtELKC3Tz2HJNR/ou9PflnbX373aZxT92Z1cVkl1V85LAe0N/RyYfMdAl1q43wWZ1/eFX3LhvvAzAtoP+jk0BQV03bNcCz8noL2gn4PTfUD/rE4A/f1oNP7b8ZWnex3KFNDNBLQP9HN4ug/o3VsTV/a4Bmm6C3/nWk+78HMC2gP6OUAZduFP1vTz3j6bkSd3aln78s+oiRHQ/PRziDIEdHJ6evrrdBf+p9NrO0eAzlTbrveXh49++rHuBCRREyOg2ennIPXiJNK+zmZD54/n5f11PpK+1igmAaUl+jlM/RgHuq83q8dPx89rvrmgiRHQzPRzoEq6EumyuovSckLrT2IfNTECmpd+DlVhAZ2avD99dXx8/Oz0dcImbNTECGhW+jlYnQd0fvRzMZ3djYQjoklvLmhiBDQn/RwuAQ1BQDPSzwHrPqDff/vwj+p/b3sooIcQ0Hz0c8jKOwZ6kKiJEdBs9HPQBDQEAc1FP4ct1zjQ/5NyS7jDRU2MgGainwOX70qkey8zNDRqYgQ0D/0cuqx35XxY+66ah4qaGAHNQj8HL9cx0Lfz+2uO19xbrk1REyOgOegn+U4iTV59k3g95gGiJkZAM9BP8p6F/7y4sr27w6FREyOg3dNP8g9j+vRi3tBH3SQ0amIEtHP6yWX+gE69f+FSzkMJaNf0k0r+gE7efi+ghxLQjuknM7kDOqtnd2eSoiZGQLuln8xlDehs5706ANrZeNCoiRHQTuknC/kCenX66N7Lpt/BFlETI6Bd0k+u5LoWfjGAqdNBoJcCSgP0k2s5L+Xs+jKkSwHlcPrJjXwBfdjlrvuVqIkR0M7oJ0ty7cKn3NS4AVETI6Bd0U+W5R7G1LGoiRHQjugntwhoCALaDf3kNnflDEFAO6GfrBDQEAS0C/rJKrc1DkFAO6Cf3OEYaAgC2j795C4BDUFAW6efrJFrHOi70+WRoO9emY3pIALaNv1knXxXIi2dNrr9VZuiJkZAW6afrCWgIQhou/ST9boP6J/HU38/Go3/dnzlqWFMBxLQVuknG3Qf0I9HozUeNP021ouaGAFtk36ySYZd+JM1/bzXzQaogFKffrJRhoBOTk9Pf53uwv90eu286TexSdTECGh79JPNenESqTtREyOgrdFPtujHONDORE2MgLZFP9nGlUghCGhL9JOtBDQEAW2HfrKd6exCENBW6Cc7CGgIAtoG/WQX84GGIKAt0E92cgw0BAFtnn6ym4CGIKCN00/2IKAhCGjT9JN9ZA/om6PR6NHvTb+JTaImRkAbpp/sJV9A3z6tzryfzf7uxz83/S42iJoYAW2WfrKfbAE9mw1duprbrqsL46MmRkAbtdTPi9Ho/tJFx9PV9vHSEy+Wv5y8/b5anb999tfOX/Dlydo1/tOL6QuMl3fI9nmEjHIFtCrndB2aZXTy4+21skVREyOgTVrqZ7Vujn64+dbmgE5e3Ux0+92OeR6mr7ouoG8WrzD+Z51HyClXQM9m/2GvVs8Hs9XQhMoHEdAGLe+/z3aRllbOjQGdlfba/a0FnZys3ee6uPn5H/Z/hKxyzcb04+y4Z7V6/uCeSIcT0ObcOv55Nhp/s3yIflNAZ/2897LaeX///Wj7BsHsuXdX+OrqvHvTPfP313e42ecR8so7H+jZ/PyRgB5KQBtzq5/TNfP+m+VmbgpodZuF62+82bp9+PZo/VH/s6sN1+tDWvs8Ql55A7rYlRHQQwloU26ff68CeWvt3BDQaldq6fGzzTvxn6bbjqNHT++u8IudssWrVT++zyNkljWgi0OgHa4MURMjoA1ZGb90UgXrZGl7ckNAV4pZrd6/zz+ujtCrdrqerzuJVG3sLl5i0cl9HiGzfMdApyvl4hBotYY6iXQQAW3GSj/n/2VfPse5PqDz1XnJ+Txz6wI6/u7D2rPwy79lnux9HiGzjGfh773+b7M9+Ml/dHdKMWpiBLQRq+Pn57lc3thbH9BpaNceg1oT0M9VWjcE9PqVz65yufMRMssV0KsJQR/PP+toA1RA2WK1n1flXKrm+oBe7Bq4tGJdQJeDOH/ZfR4hs2xXIs2vQZqudlVAdw08bkzUxAhoA+5cvzldRx8sPl71TkC5Jd+18JO3x/94Pf345b8+et30e9goamIE9HB3r3+/Osy4dIhzY0Br7UMJaBjZZ2PqVtTECOjB7vbzZvzSzRamLVBuEdAQBPRQa+ZfWrps8nrCsI0nkQR0mAQ0BAE90Jp+3r66fVGrlWwtenrnbPtk+4RMzsKHkTGg7/51fOMfBtIfQkAPs27+z49HtwI6L95KQBdHSe+MA50+7bstv8440DAyn4VfWT1bFzUxAnqQtfMnL++tXxfy9s769QjR1Ws3T7bvX7sSKYyc84EKaGME9BBr+3l7t/yqkLcfvR7ftHIt/MWOFXpdQF0LX6SMVyKNHv50fm33JN6NiJoYAT3A+vt33D6zPu3VPF0nSw9fzeVwOV+fb2ZjOtpxgmfthMpmYypRxmvhu7r6aFnUxAhoug33P7q9F369wlbbmuPZTTs+V1PQX20Qzs44fV09PnlbzQe6Y0bldQGdzfX5+s7snzseIa98szFlOYITNTECmmxDP1cvb7/eKz9bc25+6svT5YfvzX9002q+HNCb51zc/LwZ6UuRdz7QzkVNjICm2nT/zbOVXaRq22+erDc3h+/Hz2+eMPnlpm1XlybXC+jln3fud7TPI+SUbxdeQBskoIk29fPOwKSlg5+Lu2+OH768vZ/++dXqXTlrBtRdOcuT8SRSjl2QqIkR0DTu/85hMk5nl2MTNGpiBDSJfnKgnAPpx8/Om/7lu0RNjICm0E8Ole8k0m0G0h9EQBPoJwcT0BAEtD795HC5Avr9t7c9FNBDCGht+kkDTGcXgoDWpZ80QUBDENCa9JNGCGgIAlqPftKMrAH9fHr624dds3c3KmpiBLQW/aQhGQP65pv52fcvT+51dl1a1MQIaB36SVPyBfSXq+FLXc7MFDUxAlqDftKYbAGtZgW79z+OpgGt5m3oanLtqIkR0P3pJ83JeUuP59ONz2oA/d2Zb1oTNTECujf9pEG5Anoym25xHtBbNxtsV9TECOi+9JMm5ZsPdH6XwVlAu7tBVtTECOie9JNG5Z2RfhHQ7ua2i5oYAd2PftIsAQ1BQPeinzTMLnwIAroP/aRpGU8iPb4O6OoNvNoTNTECugf9pHG5AnqxGENfBXT6uWFMhxHQ3fST5uUKaDX2c/yyCujkP0ZJA+kn76oL6eu+uaCJEdCd9JMWZLsS6dac9CmXciadeYqaGAHdRT9pQ75r4att0IWkyUQEdImA7qCftCLndHafXlTzMY0fvd7z+Z/Pl72fBvT19GOtyfCiJkZAt9NP2lHQhMp3bkQ3uprPqcabC5oYAd1KP2mJgIYgoNvoJ23JHdD3/zp+tu8R0DdH0x3+4yt/PxqN/zb9+I86p+KjJkZAt9BPWpMloJNfjubbjZ+ezv7sH+3ZwE8/Lp1wchJpiYBupp+0J0dAL44WO97XO+X39i3hn9PNzn/OPxXQJQK6kX7SogwBreZSnrfvZJrOl+evjmpcyVlts96fbYQK6BIB3UQ/aVP3AZ1c74dPS3o1l8j+I+mrC5fGzy8F9BYB3UA/aVX3Ab24PnF+NptQ5PJqZpF9fXw6O2oqoEsEdD39pF3dB/S6losp7S5nTa1zMfzkl/l19AJ6TUDX0k9a1nlAb7J5U8Crffm9VQOa/lb3h2ZvLmhiBHQd/aRtnQf0VjYfrD62r08/1h5DP39zQRMjoGvoJ63LGNDrQ6BJhzP/PBLQGwJ6l37SvowBPbk+9157F77y6V/1LkKav7mgiRHQO/STDuQ7Brq02VnzJNIBoiZGQFfpJ13IchZ+dv+Om0Og1UPuiXQQAV2hn3QiyzjQ2ebmyfWNkKpLk9wT6SACept+0o3uA1pdAH/v9fkv1+eAPj1J34Pffvpp3ex3ab+n72L/62rTTzqS4Vr4i6u/9mqrc/L2xSjtnkgzAjoX+19Xl37SlVyzMY0WsyrNJmQaJ+/A1x0AFTUxArpEP+lMnvlA3x4fP5vfy6gK6MOUe8otfHZPpIqA3tBPupN7RvrJfz/tZgDTXNTECOg1/aRDuQPasaiJEdAr+kmXBDQEAV3QTzpVYEAn5+9OT09/O0/Z9Y+aGAGd00+6VVpA379YGpL06HXdH4+aGAGd0U86VlZAF3fxvHGv5gDSqIkR0Ip+0rWiAjofQPrt4sbw34zqDyGNmhgBvdRPMigpoNWY0fHLpQfe1p4TNGpiBFQ/yaGkgJ7dyWWV1Bq3oxPQwPSTDAoKaHU/5NUd9oua85BETYyA6ic5FBTQdde9uxZ+bvAB1U+yENAQhh5Q/SSPggJ6c0PkG3bh5wYeUP0kk4ICWs1hv1LL6rBorZuBRE3MsAOqn+RSUkCrW3/cX576rro7fL25mKMmZtAB1U+yKSmg1TimaTGPfzqt/DofSV9rFJOABqSf5FNUQC/fHK1cyjl+Xu8FoiZmwAHVTzIqK6CXk1fLCR0/qzsjU9TEDDeg+klOhQV0avL+9NXx8fGz09cJ89lFTcxgA6qfZFVeQA8SNTFDDah+kpeAhjDQgOonmQloCMMMqH6Sm4CGMMiA6ifZCWgIQwyofpKfgIYwwIDqJz0goCEML6D6SR8IaAiDC6h+0gsCGsLQAqqf9IOAhjCwgOonPSGgIQwroPpJXwhoCIMKqH7SGwIawpACqp/0h4CGMKCA6ic9IqAhDCeg+kmfCGgIgwmoftIrAhrCUAKqn/SLgIYwkIDqJz0joCEMI6D6Sd8IaAiDCKh+0jsCGsIQAqqf9I+AhjCAgOonPSSgIcQPqH7SRwIaQviA6ie9JKAhRA+oftJPAhpC8IDqJz0loCHEDqh+0lcCGkLogOonvSWgIUQOqH7SXwIaQuCA6ic9JqAhxA2oftJnAhpC2IDqJ70moCFEDah+0m8CGkLQgOonPSegIcQMqH7SdwIaQsiA6ie9J6AhRAyoftJ/AhpCwIDqJwUQ0BDiBVQ/KYGAhhAuoPpJEQQ0hGgB1U/KIKAhBAuoflIIAQ0hVkD1k1IIaAihAqqfFENAQ4gUUP2kHAIaQqCA6icFEdAQ4gRUPymJgIYQJqD6SVEENIQoAdVPyiKgIQQJqH5SGAENIUZA9ZPSCGgIIQKqnxRHQEOIEFD9pDwCGkKAgOonBRLQEMoPqH5SIgENofiA6idFEtAQSg+oflImAQ2h8IDqJ4US0BDKDqh+UioBDaHogOonxaNgEnQAABMwSURBVBLQEEoOqH5SLgENoeCA6icFE9AQyg2oflIyAQ2h2IDqJ0UT0BBKDah+UjYBDaHQgOonhRPQEMoMqH5SOgENociA6ifFE9AQSgyoflI+AQ2hwIDqJwEIaAjlBVQ/iUBAQyguoPpJCAIaQmkB1U9iENAQCguofhKEgIZQVkD1kygENISiAqqfhCGgIZQUUP0kDgENoaCA6ieBCGgI5QRUP4lEQEMoJqD6SSgCGkIpAdVPYhHQEAoJqH4SjICGUEZA9ZNoBDSEIgKqn4QjoCGUEFD9JB4BDaGAgOonAQloCP0PqH4SkYCG0PuA6ichCWgIfQ+ofhKTgIbQ84DqJ0EJaAj9Dqh+EpWAhtDrgOonYRUW0Mmr77/92//8cP31lyejr/6o8fM9TczB+hxQ/SSusgL659EsE+NnVwkV0LkeB1Q/CayogJ5ddWJ0f1FQAZ3rb0D1k8hKCujH6fbnvZfn579UH+fZFNC53gZUPwmtpICeXW15fnp6VVABnetrQPWT2AoK6OTH0eiHm09nLRXQuZ4GVD8JrqCALseyKuiDSwG90s+A6ifRFRrQ6ovRYwG90suA6ifhlRrQ6ozS+GcBXehjQPWT+AoK6NIx0MrFaPTV7wI618OA6icDUFBAq7PwD25/+dX/FdCZ/gVUPxmCkgJajQN99NfN1yezZgjoZQ8Dqp8MQkkBnV2JtNzLXwR0oW8B1U+GoaiAXr45ut3L6dcCWulZQPWTgSgroJeTt//4cOvrX44E9LJvAdVPhqKwgB6qL4lpWq8Cqp8MhoCG0KeA6ifDIaAh9Cig+smACGgI/QmofjIkhQd0+5VIozU6fHMd6s2/Tj8ZFAENoS//Ov1kWEIH9K78iWlHTwKqnwxM4QG9/Hz+1+4n3ciemJb0I6D6ydCUHtCaciemLb0IqH4yOAIaQh8Cqp8Mj4CG0IOA6icDVGBAJ+fvTk9Pfzv/sPupdwhoW/STISotoO9fLA1JevS67o8LaEv0k0EqK6DVDeFvufdzvRcQ0HboJ8NUVEAvjqpIfHs89031xfiH3T+2REBboZ8MVEkBrW5lPH659MDbuvMpC2gr9JOhKimgZ3dyubg7/P4EtAX6yWAVFNCV2xrPXIxG9+ucjRfQ5uknw1VQQNdd9+5a+LmMAdVPBkxAQ8gXUP1kyAoK6HQXfrw6asku/Fy2gOong1ZQQC9P7tSyOiz6oM5LCGiz9JNhKymgH4+mBf196YFP037e2SjdSkAbpZ8MXEkBrcYxTYt5/NNp5df5SPpao5gEtFH6ydAVFdDLN0crl3KOn9d7AQFtkH4yeGUF9HLyajmh42d1Z2QS0OboJxQW0KnJ+9NXx8fHz05fJ8xnJ6CN0U8oMKAHEdCm6CcIaBCdB1Q/4VJAg+g6oPoJFQENoeOA6ifMCGgI3QZUP2FOQEPoNKD6CQsCGkKXAdVPuCKgIXQYUP2EawIaQncB1U+4IaAhdBZQ/YQlAhpCVwHVT1gmoCF0FFD9hFsENIRuAqqfcJuAhtBJQPUTVghoCF0EVD9hlYCG0EFA9RPuENAQ2g+ofsJdAhpC6wHVT1hDQENoO6D6CesIaAgtB1Q/YS0BDaHdgOonrCegIbQaUP2EDQQ0hDYDqp+wiYCG0GJA9RM2EtAQ2guofsJmAhpCawHVT9hCQENoK6D6CdsIaAgtBVQ/YSsBDaGdgOonbCegIbQSUP2EHQQ0hDYCqp+wi4CG0EJA9RN2EtAQmg+ofsJuAhpC4wHVT9iDgIbQdED1E/YhoCE0HFD9hL0IaAjNBlQ/YT8CGkKjAdVP2JOAhtBkQPUT9iWgITQYUP2EvQloCM0FVD9hfwIaQmMB1U+oQUBDaCqg+gl1CGgIDQVUP6EWAQ2hmYDqJ9QjoCE0ElD9hJoENIQmAqqfUJeAhtBAQPUTahPQEA4PqH5CfQIawsEB1U9IIKAhHBpQ/YQUAhrCgQHVT0gioCEcFlD9hDQCGsJBAdVPSCSgIRwSUP2EVAIawgEB1U9IJqAhpAdUPyGdgIaQHFD9hAMIaAipAdVPOISAhpAYUP2EgwhoCGkB1U84jICGkBRQ/YQDCWgIKQHVTziUgIaQEFD9hIMJaAj1A6qfcDgBDaF2QPUTGiCgIdQNqH5CEwQ0hJoB1U9ohICGUC+g+gnNENAQagVUP6EhAhpCnYDqJzRFQEOoEVD9hMYIaAj7B1Q/oTkCGsLeAdVPaJCAhrBvQPUTmiSgIewZUP2ERgloCPsFVD+hWQIawl4B1U9omICGsE9A9ROaJqAh7BFQ/YTGCWgIuwOqn9A8AQ1hZ0D1E1ogoCHsCqh+QhsENIQdAdVPaIWAhrA9oPoJ7RDQELYGVD+hJQIawraA6ie0RUBD2BJQ/YTWCGgImwOqn9AeAQ1hY0D1E1pUYEAn5+9OT09/O/+Q8LNDC6h+QptKC+j7F6Mbj17X/fGBBVQ/oVVlBfTT09Ft936u9wLDCqh+QruKCujFURWJb4/nvqm+GP9Q6xUGFVD9hJaVFNAvT6bBfLn0wNtpUL/6o85LDCmg+gltKymgZ3dyWSX1cZ2XGFBA9RNaV1BAJz+ORqs77Bej0f06Z+OHE1D9hPYVFNDp5uad/fV1j20zmIDqJ3RAQENYDah+QhcKCuh0F368OmrJLvzcSkD1EzpRUEAvT+7Usjos+qDOSwwjoPoJ3SgpoB+PpgX9femBT9N+3tko3WoQAdVP6EhJAa3GMU2LefzTaeXX+Uj6WqOYBhFQ/YSuFBXQyzdHK5dyjp/Xe4EBBFQ/oTNlBfRy8mo5oeNndWdkih9Q/YTuFBbQqcn701fHx8fPTl8nzGcXPqD6CR0qL6AHiR5Q/YQuCWgINwHN/U5gSAQ0hOuA5n4jMCgCGsLa+UCBlhUe0O3Xwo/W6PDNdSj2vw76SkBDiP2vg74KHdC7wiZGQCGDwgN6+fn8rzpPD5sYAYUMSg9oTVET8+9/6yd0T0AjMH4eshDQAPQT8igwoJPzd6enp7+dJ1wKHzOg+gmZlBbQ9y+WhiQ9el33xyMGVD8hl7IC+unpyqjOe7Xmow8ZUP2EbIoK6MVsMtBvj+dmE9KPV+8Uv128gOon5FNSQL88mQbz5dIDb6dBrTWOPl5A9RMyKimgZ3dyWSW11k2RogVUPyGnggJa3cN4dYf9Ytj3hddPyKqggK677n3Y18LrJ+QloOXST8isoIBOd+HHq6OWhrwLr5+QW0EBvTy5U8vqsOiDOi8RKKD6CdmVFNCPR9OC/r70wKdpP+9slG4VJ6D6CfmVFNBqHNO0mMc/nVZ+nY+krzWKKU5A9RN6oKiAXr45WrmUc/y83gtECah+Qh+UFdDLyavlhI6f1Z2RKUhA9RN6obCATk3en746Pj5+dvo6YT67GAHVT+iH8gJ6kBAB1U/oCQEtjn5CXwhoafQTekNAC6Of0B+DC2jh/r24gTHQC403qukXbFLuhX0o/YR+abxRTb8geyn/6ESfWJpNsjRrsKzysJI2ydJskqVZg2WVh5W0SZZmkyzNGiyrPKykTbI0m2Rp1mBZ5WElbZKl2SRLswbLKg8raZMszSZZmjVYVnlYSZtkaTbJ0qzBssrDStokS7NJlmYNllUeVtImWZpNsjRrsKzysJI2ydJskqVZg2WVh5W0SZZmkyzNGiyrPKykTbI0m2Rp1mBZ5WElbZKl2SRLswbLKg8raZMszSZZmjVYVnlYSZtkaTbJ0qzBssrDStokS7NJlmYNllUeVtImWZpNsjRrsKzysJI2ydJskqVZg2WVh5W0SZZmkyzNGiwrgEQCCpBIQAESCShAIgEFSCSgAIkEFCCRgAIkElCARAIKkEhAARIJKEAiAQVIJKAAiQQUIJGAAiQSUIBEAgqQSEABEgkoQCIBBUgkoACJBBQgkYACJBJQgEQCCpBIQAESCWgnPr04Go3Gj36v9y3W27jIJj+Orv2Q4Y0V68uTr/5Y87B1cycB7cKbo/kf9fifdb7FepsX2ZcnAppi+h+edQG1bu4moB242PxnveVbrLff0rQ49zc5Ga0LqHVzDwLavmq76N50N+j90zvr6ZZvsd62RXbmTz3B7MDH3bXPurkPAW3f9M/6/ofqk2pNfbzvt1hv2yI78Zde39vZjvrdBWfd3IeAtm66/o1/nn/68WixTu7+FuttW2TT71mGNX2abl+OHj29G1Dr5l4EtHXTXaGr1W9ppdz1Ldbbtsim33uQ4z2VbLqdOX6+7iSSdXMvAtq6i9HNn/XJ7YN0W77FetsW2fR7P3z6frpF9fBl92+sUGfj7z6sPQtv3dyLgLbuYukI0tmdgG76FuttW2Rno/HfF6eNH9nl3M/nakFtCKh1czcBbd3y2ndx+3D8lm+x3rZFdrI0islBuxrWBdS6uRcBbZ2ANmnLIqvOFo+ffaguoBlZmHUIaDIBbZ2ANmnLIvvy5Ppcx5mhi3UIaDIBbZ2ANmm/RVZtjDpqtzcBTSagrRPQJu25yM4szRoENJmAts5Z+Cbtucj8ydfhLHwyAW2dcaBN2nORCWgdxoEmE9DWuRKpSXsuMttMdbgSKZmAts618E3assiWjnsunZBnt3UBtW7uRUDbZzamJm1eZNO/80UGqgkuXRW/v7UTKls39yGg7ZtNrPh683yg67/FepsX2Wwg/fMP82/ZAK1hbUCtm/sQ0A7cmdr7Zg/TrN+1bV6aH49uvmWTqYblgFo3axHQLvy5cnOZpUN0q99ip81L8+PTkaWZYH1ArZt7ENBOrNzecPkchzsf1rZ5aU7eVrPZff3sr2zvrUgbAmrd3E1AARIJKEAiAQVIJKAAiQQUIJGAAiQSUIBEAgqQSEABEgkoQCIBBUgkoACJBBQgkYACJBJQgEQCCpBIQAESCShAIgEFSCSgAIkEFCCRgAIkElCARAIKkEhAARIJKEAiAQVIJKAAiQQUIJGAAiQSUIBEAgqQSEABEgkoQCIBBUgkoHTqy5Ov/tjzqZO33x+NRqOv//F78m+b/Dha/LrJq29Go/F3Nw9seN6nl8m/jAESULq0IWDrvKnqOXc/NaHXv276SeXBjoBOfhk9TvxVDJKA0qHJyWjfgF6Mluy91br6+656uXi1xzsCOn2agFKDgNKd2XbgfjH88mQ0uvfyw/Sz81fTTdH7Hw77zWf7vYSAUo+A0pm3R/tvTS4X7+P053447Fef7fcKAko9AkpHPj2d1vPR0z0DejIa/3z9xTR/Dw775QJKKwSUjkwbNn6+90mkWwGdboI+uPrw6fvqbPpfV9+avPl22uWHLz/cPFCdbn80P+00/3XV4YD5IdDl0/J3n3d12PWH6S+62vyVVLYRUDpyNv7uw/5n4c/WhKsK6Mf5ufmrun68OlV/b3Gi/uPT+dfj2Qbn5oCue951QKdfXv2CWyGHFQJKRz5X23R7B7Qq48125vVj/+nHReTmWft4M9Rp/rLXrZw/YWNA1z7vOqA3+Z4+79DzV0QmoHRp/3GgZ7O6/e2npYjOclltalZDRKt9+vmp+mp3fPHAdINxNH4+P976YPnXXR0DvXpgw/Oudtiv9+HtwbOVgNKllIH01wc4P16PZ5p+Vm05Xlyfqp+mtHpg8eH6k00B3fS8616eXP+cPXi2EFC6VCOgl5O3T692s58tZ7NyMivd0gHKefourk/Xz4u5KaCbnncd0Iv586eP24NnCwGlS3UCWnn/6vv5xZxVxm6fHH9w6wDl/ET96milTQHd9LyLpWOfi/P+9uDZQkDp0pqAXp/P2bSz/OnFaN61xWimy6tPb84EXUV29Zz5poBuet7NIc+TRWjtwbONgNKllIDOcln91O2A3v+wdA6+8YDO9uHtwbODgNKlfQN6cnsfe/7l6hbo0i799fOaCuhsH94ePDsIKF3a9xjoysWbZ1cBXT0GuvJijR0Dne/D24NnBwGlS/sGdLHTfvNTVcmWHjxZ7GGvXOF+c3Z9vrW6+yz87ectBfTj0fh/24NnBwGlS/sGtGrjvetplM9GV8dAF91bpLR6/PfrpzxeHug0H+e0KaCbnrcU0OlD//mJPXi2E1C6VOtSztGj1x+uhoM+vn7s95sLj6rDp+Pn0+d8/mVxCHVxhdHkl3lyd12JtPq8i6VJ9M5GXx/Zg2c7AaVL+48DfXPrDPtsw3Ma0K+vTrzfmmh+caH75fI17rOvNwZ0w/Pm5/XnhwU+NjCPM9EJKF2qMZD+ar6k6vz8P+ePHI0eLJJ5b/EiF0fLHbxczDp6/fXGgG543vzWSY+v3qo9eHYQULpU60qk9y+quT7HD//nzbXwD2Zd/fr5zQu+qp7z9bOlCUK/mT7wcHmez8s1Ad3wvEk1aP+7+SuZyY6dBJRiLI0D7YCZ7NhNQClGtwFdN6Uz3CagFKPTgL49qnGwgaESUIrRXUAvls9LwUYCSjG6C+hsOJMjoOwkoBSju4B+eToafaef7CSgAIkEFCCRgAIkElCARAIKkEhAARIJKEAiAQVIJKAAiQQUIJGAAiQSUIBEAgqQSEABEgkoQCIBBUgkoACJBBQgkYACJBJQgEQCCpBIQAESCShAIgEFSPT/ATulXQpgCtrBAAAAAElFTkSuQmCC" width="672" /></p>
-<pre><code>## 
-## Call:
-## roc.formula(formula = penguins_testing$penguins_species_fnl ~     predictTest, plot = TRUE, print.auc = TRUE, col = &quot;black&quot;,     lwd = 4, legacy.axes = TRUE)
-## 
-## Data: predictTest in 23 controls (penguins_testing$penguins_species_fnl 0) &lt; 23 cases (penguins_testing$penguins_species_fnl 1).
-## Area under the curve: 1</code></pre>
-<p>Finally, the AUC of our chosen model #1 is very good, with a value of 0.991, which is very close to 1 and supports our calculation of accuracy that almost all predictions were correct.</p>
+<div class="figure">
+<img src="data:image/jpeg;base64,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LfXy7GXm3te0Ix95vWQ9z0UcD+JmAFs7OW+uUv75drr/AMe9qT8sIP8AEfWQjv8AwjgYyxbUoooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACvL/hD/AMlB+N//AGOFv/6YNHr1CvL/AIQ/8lB+N/8A2OFv/wCmDR6APUKKKKACiiigAooooARlDKQRkHgg1k2/g/QbXT2sYdE06Gyab7QbaO0jWMyZB3lQMbsgc9eBWvRQAUUUUAeW2/wRvPD814nhXx94g8KaXdXEl0dMtILG5hSVzudkNxbyOoZiTtDYBPAFdL4B+HFn4DOqXK317q+r6tMs+oanqDqZbh1Xap2oqogA4CooA9K62ihaKyB+87sK85/aQ/5N3+KX/Yq6p/6SS16NXnP7SH/Ju/xS/wCxV1T/ANJJaAPQLT/j1h/3F/lU1Q2n/HrD/uL/ACqagAooooAKKKKACiiigAooooAKKKKACiiigAooooA/ND/gm3/ye3+1N/2Frv8A9OVxX6X1+aH/AATb/wCT2/2pv+wtd/8ApyuK/S+gAooooAKKKKACiiigAooooAKhvLyKxt2mnfZGvU4JJ9AAOSfYUl5eQ2Fu8877Il6nBJPoABySTwAOSao2dnNfXCX1/H5bLzBakg+T7sRwX9cZA6An7xACzs5r64W+v02MvNva9RCPVuxkPfHC9BnBZtWiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACvL/hD/AMlB+N//AGOFv/6YNHr1CvL/AIQ/8lB+N/8A2OFv/wCmDR6APUKKKKACiiigAooooAKKKKACiiigAooooAK85/aQ/wCTd/il/wBirqn/AKSS16NXnP7SH/Ju/wAUv+xV1T/0kloA9AtP+PWH/cX+VTVDaf8AHrD/ALi/yqagAooooAKKKKACiiigAooooAKKKKACiiigAooooA/ND/gm3/ye3+1N/wBha7/9OVxX6X1+aH/BNv8A5Pb/AGpv+wtd/wDpyuK/S+gAooooAKKKKACiiigAqG8vIbC3eed9kS4ycEkknAAA5JJIAA5JIAovLyGwt3nnfy4lxk4JJJOAABySSQABySQBVCztJr64S+vU8spzb2x58rtub1cj8skUAFnZzX1wl9fIYyvMFqxB8r/abHBfHpwOgJ61q0UUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFeX/CH/AJKD8b/+xwt//TBo9eoV5f8ACH/koPxv/wCxwt//AEwaPQB6hRRRQAUUUUAFFFFABRRRQAUUUUAeYf8ADRPhKPVZoJv7RttJivP7ObxDNaFdMFznb5Znz8vzfLuIC543ZxXW+H/Hmk+JvEniHQ7F5Wv9BkiivQ8e1Q0ib12nvxWL4H+FNt4O0fXtAmuYtY8NajdTXEOnXdquYVmJaWJ2ziRCzMRlQQDglutc18CfgzD8IfEXjkW+savq1tqV3BJbrqtuqi1hSLakMco/1yIOAxGQAAScZoj/AHu346f8H+tyXW3f8P6/rt7DXnP7SH/Ju/xS/wCxV1T/ANJJa7zVNSt9G0271C8k8q0tYXnmkCltqKpZjgAk4APAGa+e/wBoD9or4fat8B/iRY2uuyS3Vz4a1KGJP7Pul3O1rIFGTEAOSOTxQB9EWn/HrD/uL/KpqhtP+PWH/cX+VTUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFAH5of8E2/wDk9v8Aam/7C13/AOnK4r9L6/ND/gm3/wAnt/tTf9ha7/8ATlcV+l9ABRRRQAUUUUAFQ3l5DY27zzuI4l6k+5wAB3JJAAHJJAou7uKxt3nmfZEgyT/IfUmqFnaS6hcpfXqbNnNtbN/yyzxvP+2Rx7AkDq2QBbO0lvrmO+vU2GPJt7Y/8ssjG4/7ZBI9gSB1NalFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAV5f8If8AkoPxv/7HC3/9MGj16hXl/wAIf+Sg/G//ALHC3/8ATBo9AHqFFFFABRRRQAUUUUAFFFFABRRRQB8raf4k8N3F/rP/AAtrxp4p0LxSmoTomnW+tahpdvFahyIPKS0aNHUpg723MSTk8V6X+z7qWp33/CUIt/qur+DobxB4f1DWWeSeWEoDIBLIPMlQPkK8hZjyMnAr16iiPuq3lb8tfX/NhL3nfzv/AMD0CvOf2kP+Td/il/2Kuqf+kktejV5z+0h/ybv8Uv8AsVdU/wDSSWgD0C0/49Yf9xf5VNUNp/x6w/7i/wAqmoAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAPzQ/4Jt/8nt/tTf9ha7/APTlcV+l9fmh/wAE2/8Ak9v9qb/sLXf/AKcriv0voAKKKKACobu7isbd55n2RoMk/wBPrRdXUVjbvPO4jjQZLGqFpaS6hcJfXyFApzb2rdIh/fb1c/8AjucDuSAFpZy6hcpfXyFNhzbWrdIv9tvVz/46OB1YnVoooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAry/4Q/8lB+N/wD2OFv/AOmDR69Qry/4Q/8AJQfjf/2OFv8A+mDR6APUKKKKACiiigAooooAKKKKACiiigAooooAK85/aQ/5N3+KX/Yq6p/6SS16NXnP7SH/ACbv8Uv+xV1T/wBJJaAPQLT/AI9Yf9xf5VNUNp/x6w/7i/yqagAooooAKKKKACiiigAooooAKKKKACiiigAooooA/ND/AIJt/wDJ7f7U3/YWu/8A05XFfpfX5of8E2/+T2/2pv8AsLXf/pyuK/S+gAqG6uorG3eedxHEgyWP+eT7UXd3FY27zzuI4kGS3X8AO59hyaoWtpNqFwl7fJ5YQ5t7U8+X/tP6v+g7Z60AFpazahOl7fIYwp3W9of+WX+03q/6L0GeSdWiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAry/4Q/wDJQfjf/wBjhb/+mDR69Qry/wCEP/JQfjf/ANjhb/8Apg0egD1CiiigAooooAKKKKACiiigAooooAKK+YtI+I0PiG71mTxv8apPhrrFvqE9snh2O402w8mBHIici7hkeTeuG3ghTngcV6H8BPGGq+JpPFVrca03ivQtNvUh0nxE8KIb+JkDMd0arHLtYlfMjUKfTINEfeV12v8Al/mEvddn3t/X3HrVec/tIf8AJu/xS/7FXVP/AEklr0avOf2kP+Td/il/2Kuqf+kktAHoFp/x6w/7i/yqaobT/j1h/wBxf5VNQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAfmh/wTb/5Pb/am/7C13/6criv0pu7uKxt3nnfy4kGS2M/QADqSeABySa/ND/gnLdRWP7af7VM87iOJNWuyWP/AGE5wAB3JPAA65r9ILW1l1K4jvbxGjRDut7Vv4P9tv8AbwenbPrQAWtrNqNwl7exmJUObe1Y58v/AGnxwX/Qe55rVoooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACvL/hD/wAlB+N//Y4W/wD6YNHr1CvL/hD/AMlB+N//AGOFv/6YNHoA9QooooAKKKKACiiigAooooAKKKKAPK9R+Nvhy41O8h03w1r3iwWkpt5r3RtHNzAsq8NH5hxkqeDjpW98NfGOmeNBq1zp2oaiTDOsM+i6lax28mluF/1ewRqw3DDfMz9eCBxXLaT8J/HXgM3tj4H8baFY+H7i6lvY7LxF4al1Ce3klYvIqzQ31sCm4kgMhYZ5Y10/w3+G83gq613VdU1g674i16dLjULuO2FtbhkTYiQwhmKIF7O8jZJyx7Edte346f8ABCW+nf8AD+rHX6lHdzaddR2E8NrfNE6289xCZo45CDtZkDKXUHBKhlJAxkda+f8A9oDw/wDFSL4DfEl73xx4UubNfDWpGeGDwlcRSSRi1k3KrnUWCkjIDFWwecHpX0TXC/HjR73xD8D/AIiaVpttJe6jfeHdRtba2hGXlle2kVEUdyWIA+tAHaWn/HrD/uL/ACqavIvDf7SGgeIvDularpnh3xnfabfWkV1a3UHhi8aOaJ0DI6ny+QVIIPvWl/wvfTv+hT8cf+Ete/8AxugD0uivNP8Ahe+nf9Cn44/8Ja9/+N0f8L307/oU/HH/AIS17/8AG6APS6K80/4Xvp3/AEKfjj/wlr3/AON0f8L307/oU/HH/hLXv/xugD0uivNP+F76d/0Kfjj/AMJa9/8AjdH/AAvfTv8AoU/HH/hLXv8A8boA9LorzT/he+nf9Cn44/8ACWvf/jdH/C99O/6FPxx/4S17/wDG6APS6K80/wCF76d/0Kfjj/wlr3/43R/wvfTv+hT8cf8AhLXv/wAboA9LorzT/he+nf8AQp+OP/CWvf8A43R/wvfTv+hT8cf+Ete//G6APS6hurqKxt3nnkEUSDJZv89favO1+O2nMwH/AAifjgZ9fC95/wDG6oSfGK0bVpZL/wAKeNGFrKyW8UXhq7kjBBI8zcEwxPYjgA8dTQB5V+zb+xzdfBX9o74r/EmTUIbrRfGU5vLHT5mY3VrLJK00plAUJ95324yVUgE5yT9XV5Na/tJeH73VL7TYPDvjOW/sVja5t18MXheISAlCw8vjcFOPpV7/AIXvp3/Qp+OP/CWvf/jdAHpdFeaf8L307/oU/HH/AIS17/8AG6P+F76d/wBCn44/8Ja9/wDjdAHpdFeaf8L307/oU/HH/hLXv/xuj/he+nf9Cn44/wDCWvf/AI3QB6XRXmn/AAvfTv8AoU/HH/hLXv8A8bo/4Xvp3/Qp+OP/AAlr3/43QB6XRXmn/C99O/6FPxx/4S17/wDG6P8Ahe+nf9Cn44/8Ja9/+N0Ael0V5p/wvfTv+hT8cf8AhLXv/wAbo/4Xvp3/AEKfjj/wlr3/AON0Ael0V5p/wvfTv+hT8cf+Ete//G6P+F76d/0Kfjj/AMJa9/8AjdAHpdFeaf8AC99O/wChT8cf+Ete/wDxuj/he+nf9Cn44/8ACWvf/jdAHpdFeTah+0l4f0m70y1vPDvjO3uNTuDaWUcnhi8BnmEUkxRf3fJEcMr/AEQ1e/4Xvp3/AEKfjj/wlr3/AON0Ael0V5p/wvfTv+hT8cf+Ete//G6P+F76d/0Kfjj/AMJa9/8AjdAHpdFeaf8AC99O/wChT8cf+Ete/wDxuj/he+nf9Cn44/8ACWvf/jdAHpdFeaf8L307/oU/HH/hLXv/AMbo/wCF76d/0Kfjj/wlr3/43QB6XRXmn/C99O/6FPxx/wCEte//ABuj/he+nf8AQp+OP/CWvf8A43QB6XRXmn/C99O/6FPxx/4S17/8bo/4Xvp3/Qp+OP8Awlr3/wCN0Ael0V5p/wAL307/AKFPxx/4S17/APG6P+F76d/0Kfjj/wAJa9/+N0Ael0V5p/wvfTv+hT8cf+Ete/8Axuj/AIXvp3/Qp+OP/CWvf/jdAHpdFeX3n7QWkWFpNdXHhfxtDbwo0kkjeF70BVAySf3fQAUzTv2iNF1fT7W+svDPjW5s7qJZ4Zo/C96VkRgGVgfL6EEGgD1OivNP+F76d/0Kfjj/AMJa9/8AjdH/AAvfTv8AoU/HH/hLXv8A8boA9LorzT/he+nf9Cn44/8ACWvf/jdH/C99O/6FPxx/4S17/wDG6APS6K80/wCF76d/0Kfjj/wlr3/43R/wvfTv+hT8cf8AhLXv/wAboA9LorzT/he+nf8AQp+OP/CWvf8A43R/wvfTv+hT8cf+Ete//G6APS6K80/4Xvp3/Qp+OP8Awlr3/wCN0f8AC99O/wChT8cf+Ete/wDxugD0uivNP+F76d/0Kfjj/wAJa9/+N0f8L307/oU/HH/hLXv/AMboA9LorzT/AIXvp3/Qp+OP/CWvf/jdH/C99O/6FPxx/wCEte//ABugD0uvL/hD/wAlB+N//Y4W/wD6YNHqX/he+nf9Cn44/wDCWvf/AI3WP+zvrqeLtU+LPiS1s7+00zVPGB+yf2jaPbSv9n0vT7Ob924DDbcWtxHyOsZoA9jooooAKKKKACiiigAooooAKKKKACiiigAooooA87/Zz0a+8Ofs9/DDSdUtJrDU7DwvpdrdWlwhSSGVLSJXRlPRlYEEeor0SiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA878H6NfWfxm+Iuoz2k0Vje2+lLbXDoQkxSOYOFPfaWGfTIr0SiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA87+KGjX2qeN/hDc2lpNc2+m+KZ7q8kjQlbeI6JqkIdz2UySxJk93Ud69EoooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKAMTxxazX3grxBbW8bTXE2n3EccaDLOxjYAAepJqj8K7C50r4X+D7K8gktru20ezhmhlXa8brAgZSOxBBFdTRQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAUUUUAFcB8E9HvtE8J6tBf2stnNJ4m165SOZSpaKXVbqSJwD/CyOrA9wwNd/RQAUUUUAFFFFABRRRQAUUUUAFFFFABRRRQAV82y/GvxZ9hufiAl/ajwfD4sbw2ND+zJuaBb37E1yZ92d/mgtt+7t4xnmvb/FfhCbxRPYSReI9a0IWr72j0maJFn5Hyyb42yOO2OteJyfA/xaYrrwKttp48CzeKm8SjV/tX+kiNrv7Y1t5GzGfOJG/djb2zRD+Ir7f8GP6X/wCHsEvgdt/+BL9bf8Nc679pD4n33w70fwxBpepS6Xe61q8dl9otdLk1O4EW1nk8q2jR3kfC9FU+tdb8JddHiHwn9r/4SWbxRJ9okjkuLrTf7OuIGGAYZbYqrxOvdXVW+YZHSovFV549WCG80DTNNeS1vpEl0u6u8fb7XGEdZtn7ls87SrdMZ5qj8H/AOpeFLzxpr+siG21Xxbq66vPp9tKZYrPbawW6xB8DecQBi+Bkt04oh9q/r/6TZfm/wYS6W/rfX8vzR6PRRRQAUUUUAFFFFABRRRQAUUUUAFFFFABXk3jjxT4l174qW3gPwxrEXhySHSW1e71JrRLpzmQxxRKjnAGQzE4zwAK9Zrybx54R8VaP8ULTx14Q0yx125k0ptIvNNvr37GNok8yKVZNj5wSwK45BGDS+0r7a/k7fjb/AIYpbO2+n5q/4XKuh/Hp/wDhmzVfiXq1jH9s0Wwv5r6zt3AR57NpY5FQk8KzxHGTwGFUvBvjjxr4f8d+DtF8YapZ6yni3TZbxBbWi24sLmNFkaFCCS8e1iAWy3y5zzU+jfA+6h+BN58LdSaO4tta0vUItT1iFwpS5u3keTZEV5XdMxBJ4CioPAvgDxxrXjbwjrfjez0zTR4T02Syg/s+7Nx9vnkRUafBRfKXauQnzHLdeK0j8bv5flK9vnb8LdTN/AuXz9d48v4Xv879D3CiiioKCiiigAooooAKKKKACiiigAooooAK4H44eP7v4b/D2fU9Njik1W5vLPS7ET8xrPdXMdujMMjIUybiB124rvq4P43eALr4k/D260rT5YodVgurTUrB5/8AV/aLa4jnjDeilowpI5wTSfS+11f0vr+BS/r16fiY3w38W+IbT4leI/AXiXU4tdu9PsLXVbbVEtktmlimaRGRo1OMq8R5A6MK4DWPjXe33xm8U6G/je78L6Jo1za2Svb+Gpby0WRkDP8Aab7ymht8llUCSReo9RXaeDvC3jGHxh4m+IGtaJYQa/qFlaaXa6Hb6j5kccETuzO05jHJMrtjb0UD3qn8XPB3xC+Inh/xn4De20m58NeJrWWxi1wz+VLpsEsexw1vtPnMMkghl6jjiq1Uk+v9W/Dv+ZKs7rZaflr+PbU9soqGztVsbOC3VmZYY1jDOcsQBjJPc1NQ7X0FG7SuFFFFIYUUUUAFFFFABRRRQAUUUUAFFFFAHiOm/FbxveftRW3gvUfD8GheDpvD+oX9nJNOk15ezW9zZx+cQhKxRbbghV3FjyWC8Ctn4o+NNe/4WL4O+H/hq+h0bUNctr3UrnVpIFuGt7a18pSqRscFnknjGTkBQ3fGL2reAdUvf2hvDPjSMwf2Np3hrU9JmDORL509zZSR4XHK7beTJzwcetYvj/wf4uvvGnhD4gaHpFjPr2hJf6bNo1zf+XHdWdyYzuWcRna4eCJsFSMFh1waatyU+bzv98rf+2/LyG/inbyt9yv+vzN34IePNR8deF9QGsCE6zo+p3Gk3csChUmeJsCQLk7dykHHY5r0SvPvgn4Bv/APhe9XV5IX1nVtRuNWvVtzmOOSZs+WpIBYKABnvivQaH0vvZX9ba/iT1dtru3pfT8AooopDCiiigAooooAKKKKACiiigAooooA8W+NXxU8a+CvHngTStE8Pwr4c1LWLSz1PXbydCGWVmXyIIgSxfgFncKACNu45xvftGfES7+F/wAIdb17TrmO01JPKgtZpITMFlkkVFPlgEufm4UAknjFWPjD4F1Pxz/wh39mmEf2V4hs9TuPOcr+5iYltvBy3PArV8XTeMprHU08OW1hbXds8EllLeS70vV6yxsoXMR/hDZbrnHGKP8Al3rvd/dp/wAHb8x399NbWX33f/A3/IxPgr4nk8SafqTT+LL/AMR3UMkayW+q6BJot1Z5UkbreWOOQK/VWZcHacE816TXl/w78F663xI8SeP/ABHZW+i6jq2m2WkppNpd/akijtpLiTzGl2qGZjcHA2/KF9zXqFUyFpdf1/V9PxCiiipKCiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooAKKKKACiiigAooooA//9k=" alt />
+<p class="caption">I was having issues with caching when knitting to R, so had to take a picture instead of showing output!</p>
+</div>
+<p>Finally, the AUC of our chosen model #1 is very good, with a value of 0.994, which is very close to 1 and supports our calculation of accuracy that almost all predictions were correct.</p>
 <hr />
 </div>
 <div id="part-3-multinomial-logistic-regression" class="section level4">
 <h4>Part 3: Multinomial Logistic Regression</h4>
+<hr />
 <p><strong>A) Please fit a multinomial logistic regression where your outcome variable is ‘species’.</strong><br />
 <strong>B) Please be sure to evaluate the independent variables appropriately to fit your best parsimonious model.</strong></p>
+<hr />
 <p>For this last part, we’ll use the initial <code>species</code> variable to create a multinomial logistic regression model. This way, we do not have to bifurcate our species into two categories, but instead use a different type of logistic regression to obtain predictions for all three species. In order to do this, I decided to take our initial training dataset from Part 1, since it is already split accordingly, and use the <code>multinom()</code> function from the <code>broom</code> package to run our first model.</p>
+<hr />
+<p><strong><em>Model 1</em></strong></p>
 <p>In this initial model, I kept all variables in, just to get a baseline AIC to compare future models on the training data.</p>
 <pre class="r"><code>multinom_model1 &lt;- multinom(outcome_level ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g + sex + year + bill_length_transformed + flipper_length_transformed, data = penguins_training_mod)</code></pre>
 <pre><code>## # weights:  30 (18 variable)
-## initial  value 50.536165 
-## iter  10 value 3.512116
-## iter  20 value 0.117514
-## iter  30 value 0.005170
-## final  value 0.000005 
+## initial  value 210.933559 
+## iter  10 value 28.330919
+## iter  20 value 2.932103
+## iter  30 value 0.107010
+## final  value 0.000007 
 ## converged</code></pre>
 <pre class="r"><code>tidy(multinom_model1, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)</code></pre>
 <pre><code>## # A tibble: 18 x 6
 ##    y.level   term                       estimate std.error   statistic   p.value
 ##    &lt;chr&gt;     &lt;chr&gt;                         &lt;dbl&gt;     &lt;dbl&gt;       &lt;dbl&gt;     &lt;dbl&gt;
-##  1 Adelie    (Intercept)                -0.00614    0.0104    -5.89e-1 5.56e-  1
-##  2 Adelie    bill_length_mm              1.20       0.871      1.37e+0 1.70e-  1
-##  3 Adelie    bill_depth_mm              -3.17       0.186     -1.71e+1 3.35e- 65
-##  4 Adelie    flipper_length_mm         -11.2        2.35      -4.74e+0 2.14e-  6
-##  5 Adelie    body_mass_g                -0.00801    8.92      -8.99e-4 9.99e-  1
-##  6 Adelie    sexmale                    17.4        0.0104     1.67e+3 0.       
-##  7 Adelie    year                        1.11      20.9        5.29e-2 9.58e-  1
-##  8 Adelie    bill_length_transformed    91.4        0.106      8.65e+2 0.       
-##  9 Adelie    flipper_length_transform~ -33.4        0.0379    -8.80e+2 0.       
-## 10 Chinstrap (Intercept)                -0.0206     0.0104    -1.98e+0 4.82e-  2
-## 11 Chinstrap bill_length_mm             23.3        0.871      2.68e+1 3.26e-158
-## 12 Chinstrap bill_depth_mm              54.3        0.186      2.92e+2 0.       
-## 13 Chinstrap flipper_length_mm           0.457      2.35       1.94e-1 8.46e-  1
-## 14 Chinstrap body_mass_g                -0.142      9.00      -1.58e-2 9.87e-  1
-## 15 Chinstrap sexmale                   -28.4        0.0104    -2.73e+3 0.       
-## 16 Chinstrap year                       -0.690     20.9       -3.30e-2 9.74e-  1
-## 17 Chinstrap bill_length_transformed   -67.3        0.106     -6.38e+2 0.       
-## 18 Chinstrap flipper_length_transform~  10.4        0.0380     2.75e+2 0.</code></pre>
+##  1 Adelie    (Intercept)                 -0.328    0.00456  -72.0      0.       
+##  2 Adelie    bill_length_mm             -10.7      8.36      -1.28     2.00e-  1
+##  3 Adelie    bill_depth_mm               57.4     11.5        5.00     5.84e-  7
+##  4 Adelie    flipper_length_mm           -3.28    72.9       -0.0450   9.64e-  1
+##  5 Adelie    body_mass_g                 -0.0511   5.04      -0.0101   9.92e-  1
+##  6 Adelie    sexmale                     46.9      0.214    219.       0.       
+##  7 Adelie    year                         0.175    7.99       0.0220   9.82e-  1
+##  8 Adelie    bill_length_transformed    -22.0      1.46     -15.1      2.24e- 51
+##  9 Adelie    flipper_length_transformed  14.8     12.2        1.21     2.28e-  1
+## 10 Chinstrap (Intercept)                  0.409    0.00456   89.7      0.       
+## 11 Chinstrap bill_length_mm              17.0      8.36       2.03     4.22e-  2
+## 12 Chinstrap bill_depth_mm               46.9     11.5        4.08     4.52e-  5
+## 13 Chinstrap flipper_length_mm            0.0369  72.9        0.000506 1.00e+  0
+## 14 Chinstrap body_mass_g                 -0.173    5.04      -0.0344   9.73e-  1
+## 15 Chinstrap sexmale                    -62.7      0.214   -293.       0.       
+## 16 Chinstrap year                        -0.408    7.99      -0.0510   9.59e-  1
+## 17 Chinstrap bill_length_transformed    -43.9      1.46     -30.1      9.97e-199
+## 18 Chinstrap flipper_length_transformed  24.1     12.2        1.97     4.93e-  2</code></pre>
 <pre class="r"><code>summary(multinom_model1)</code></pre>
 <pre><code>## Call:
 ## multinom(formula = outcome_level ~ bill_length_mm + bill_depth_mm + 
@@ -747,53 +725,56 @@ paste0(&#39;Accuracy on Training Set: &#39;, sum(penguins_testing$accuracy)/nrow
 ##     flipper_length_transformed, data = penguins_training_mod)
 ## 
 ## Coefficients:
-##            (Intercept) bill_length_mm bill_depth_mm flipper_length_mm
-## Adelie    -0.006141246       1.196469     -3.171355       -11.1580267
-## Chinstrap -0.020562468      23.340004     54.265438         0.4570801
-##            body_mass_g   sexmale      year bill_length_transformed
-## Adelie    -0.008013786  17.40012  1.107481                91.42091
-## Chinstrap -0.142082428 -28.35127 -0.690388               -67.33920
+##           (Intercept) bill_length_mm bill_depth_mm flipper_length_mm
+## Adelie     -0.3282549      -10.72648      57.44573       -3.28013884
+## Chinstrap   0.4093077       16.98542      46.89662        0.03690183
+##           body_mass_g   sexmale       year bill_length_transformed
+## Adelie    -0.05114594  46.85619  0.1754729               -21.99939
+## Chinstrap -0.17332011 -62.66099 -0.4075378               -43.88028
 ##           flipper_length_transformed
-## Adelie                     -33.37487
-## Chinstrap                   10.43673
+## Adelie                      14.75825
+## Chinstrap                   24.05821
 ## 
 ## Std. Errors:
 ##           (Intercept) bill_length_mm bill_depth_mm flipper_length_mm
-## Adelie     0.01042189      0.8714991     0.1859754          2.353968
-## Chinstrap  0.01040842      0.8709066     0.1857202          2.351302
-##           body_mass_g    sexmale     year bill_length_transformed
-## Adelie       8.915247 0.01041739 20.93757               0.1056332
-## Chinstrap    8.995672 0.01040392 20.91052               0.1056208
+## Adelie    0.004561299       8.362393      11.49727          72.94906
+## Chinstrap 0.004561299       8.362393      11.49727          72.94906
+##           body_mass_g   sexmale     year bill_length_transformed
+## Adelie       5.043124 0.2142117 7.988299                1.458978
+## Chinstrap    5.043124 0.2142117 7.988299                1.458978
 ##           flipper_length_transformed
-## Adelie                    0.03793029
-## Chinstrap                 0.03795871
+## Adelie                      12.23654
+## Chinstrap                   12.23654
 ## 
-## Residual Deviance: 9.499238e-06 
+## Residual Deviance: 1.365053e-05 
 ## AIC: 36.00001</code></pre>
 <p>We can see that the AIC value is around 36, and when we look at the p-values and summary statistics, we can immediately see that it’ll be best to remove variables such as <code>year</code> and <code>sex</code>, both of which didn’t perform well in our binomial logistic regression earlier, as well as <code>bill_length_transformed</code> and <code>flipper_length_transformed</code>, both of which have high p-values here as well.</p>
+<hr />
+<p><strong><em>Model 2</em></strong></p>
 <p>When we re-run the model, removing these variables, we can see that there is an improvement in AIC (from 36 to 20). However, we’ll continue to remove a few variables to see if we can improve our model even more.</p>
 <pre class="r"><code>multinom_model2 &lt;- multinom(outcome_level ~ bill_length_mm + bill_depth_mm + flipper_length_mm + body_mass_g, data = penguins_training_mod)</code></pre>
 <pre><code>## # weights:  18 (10 variable)
-## initial  value 50.536165 
-## iter  10 value 3.041994
-## iter  20 value 0.041293
-## iter  30 value 0.003607
-## final  value 0.000077 
+## initial  value 210.933559 
+## iter  10 value 10.367979
+## iter  20 value 2.784343
+## iter  30 value 0.794853
+## iter  40 value 0.001436
+## final  value 0.000061 
 ## converged</code></pre>
 <pre class="r"><code>tidy(multinom_model2, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)</code></pre>
 <pre><code>## # A tibble: 10 x 6
-##    y.level   term              estimate std.error statistic   p.value
-##    &lt;chr&gt;     &lt;chr&gt;                &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
-##  1 Adelie    (Intercept)         3.63       0.150  24.1     2.13e-128
-##  2 Adelie    bill_length_mm     -4.24      60.4    -0.0701  9.44e-  1
-##  3 Adelie    bill_depth_mm       8.26      12.8     0.643   5.20e-  1
-##  4 Adelie    flipper_length_mm   0.603     65.8     0.00916 9.93e-  1
-##  5 Adelie    body_mass_g        -0.0179     3.31   -0.00541 9.96e-  1
-##  6 Chinstrap (Intercept)        -3.31       0.582  -5.69    1.27e-  8
-##  7 Chinstrap bill_length_mm      5.85      12.2     0.480   6.31e-  1
-##  8 Chinstrap bill_depth_mm       4.36       2.71    1.61    1.07e-  1
-##  9 Chinstrap flipper_length_mm  -0.796     72.0    -0.0111  9.91e-  1
-## 10 Chinstrap body_mass_g        -0.0476     2.71   -0.0176  9.86e-  1</code></pre>
+##    y.level   term               estimate std.error statistic  p.value
+##    &lt;chr&gt;     &lt;chr&gt;                 &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;    &lt;dbl&gt;
+##  1 Adelie    (Intercept)         6.02        0.126  47.8     0.      
+##  2 Adelie    bill_length_mm    -32.7         8.50   -3.85    1.20e- 4
+##  3 Adelie    bill_depth_mm      48.2         4.89    9.85    6.54e-23
+##  4 Adelie    flipper_length_mm   3.09       16.1     0.192   8.48e- 1
+##  5 Adelie    body_mass_g        -0.00376     0.828  -0.00455 9.96e- 1
+##  6 Chinstrap (Intercept)        -5.09        0.944  -5.39    7.09e- 8
+##  7 Chinstrap bill_length_mm     22.7         9.06    2.51    1.21e- 2
+##  8 Chinstrap bill_depth_mm       1.37       77.3     0.0177  9.86e- 1
+##  9 Chinstrap flipper_length_mm  -2.36       20.9    -0.113   9.10e- 1
+## 10 Chinstrap body_mass_g        -0.143       1.07   -0.134   8.94e- 1</code></pre>
 <pre class="r"><code>summary(multinom_model2)</code></pre>
 <pre><code>## Call:
 ## multinom(formula = outcome_level ~ bill_length_mm + bill_depth_mm + 
@@ -801,44 +782,52 @@ paste0(&#39;Accuracy on Training Set: &#39;, sum(penguins_testing$accuracy)/nrow
 ## 
 ## Coefficients:
 ##           (Intercept) bill_length_mm bill_depth_mm flipper_length_mm
-## Adelie       3.626079      -4.236585      8.257150         0.6029853
-## Chinstrap   -3.311896       5.845090      4.357055        -0.7963346
-##           body_mass_g
-## Adelie    -0.01790485
-## Chinstrap -0.04755197
+## Adelie       6.017933      -32.68266     48.164548          3.093349
+## Chinstrap   -5.086096       22.71875      1.366784         -2.362707
+##            body_mass_g
+## Adelie    -0.003764257
+## Chinstrap -0.142928375
 ## 
 ## Std. Errors:
 ##           (Intercept) bill_length_mm bill_depth_mm flipper_length_mm
-## Adelie      0.1504187       60.40164     12.833102          65.83331
-## Chinstrap   0.5820114       12.16875      2.706387          71.98437
+## Adelie      0.1258945       8.499668      4.887449          16.12609
+## Chinstrap   0.9438028       9.057746     77.339941          20.93772
 ##           body_mass_g
-## Adelie       3.310068
-## Chinstrap    2.707443
+## Adelie      0.8280631
+## Chinstrap   1.0704038
 ## 
-## Residual Deviance: 0.0001548685 
-## AIC: 20.00015</code></pre>
+## Residual Deviance: 0.0001212095 
+## AIC: 20.00012</code></pre>
+<hr />
+<p><strong><em>Model 3</em></strong></p>
 <p>In our third iteration of our model, we decided to remove <code>flipper_length_mm</code>, which seemed to have the highest p-value and was likely exposing our model to multicollinearity issues with <code>body_mass_g</code>, which we could see from our initial variable examination earlier in our model building.</p>
 <pre class="r"><code>multinom_model3 &lt;- multinom(outcome_level ~ bill_length_mm + bill_depth_mm  + body_mass_g, data = penguins_training_mod)</code></pre>
 <pre><code>## # weights:  15 (8 variable)
-## initial  value 50.536165 
-## iter  10 value 2.217481
-## iter  20 value 0.039958
-## iter  30 value 0.009471
-## iter  40 value 0.000119
-## final  value 0.000087 
-## converged</code></pre>
+## initial  value 210.933559 
+## iter  10 value 7.375240
+## iter  20 value 1.881621
+## iter  30 value 0.606133
+## iter  40 value 0.039272
+## iter  50 value 0.033159
+## iter  60 value 0.027623
+## iter  70 value 0.009051
+## iter  80 value 0.008738
+## iter  90 value 0.008694
+## iter 100 value 0.008516
+## final  value 0.008516 
+## stopped after 100 iterations</code></pre>
 <pre class="r"><code>tidy(multinom_model3, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)</code></pre>
 <pre><code>## # A tibble: 8 x 6
-##   y.level   term           estimate std.error    statistic p.value
-##   &lt;chr&gt;     &lt;chr&gt;             &lt;dbl&gt;     &lt;dbl&gt;        &lt;dbl&gt;   &lt;dbl&gt;
-## 1 Adelie    (Intercept)     12.9    0.000141    91987.       0    
-## 2 Adelie    bill_length_mm  -5.52   0.00599      -922.       0    
-## 3 Adelie    bill_depth_mm   20.6    0.00253      8159.       0    
-## 4 Adelie    body_mass_g     -0.0296 0.466          -0.0637   0.949
-## 5 Chinstrap (Intercept)    -17.9    0.0000610 -292984.       0    
-## 6 Chinstrap bill_length_mm  11.3    0.00389      2895.       0    
-## 7 Chinstrap bill_depth_mm   -2.61   0.000400    -6510.       0    
-## 8 Chinstrap body_mass_g     -0.111  0.465          -0.239    0.811</code></pre>
+##   y.level   term           estimate  std.error    statistic  p.value
+##   &lt;chr&gt;     &lt;chr&gt;             &lt;dbl&gt;      &lt;dbl&gt;        &lt;dbl&gt;    &lt;dbl&gt;
+## 1 Adelie    (Intercept)     41.3    0.00000434   9525727.   0.      
+## 2 Adelie    bill_length_mm -48.5    0.000194     -250238.   0.      
+## 3 Adelie    bill_depth_mm   97.4    0.0000798    1220670.   0.      
+## 4 Adelie    body_mass_g      0.0875 0.0175             4.99 6.05e- 7
+## 5 Chinstrap (Intercept)    -42.5    0.00000313 -13583092.   0.      
+## 6 Chinstrap bill_length_mm  10.2    0.000184       55533.   0.      
+## 7 Chinstrap bill_depth_mm    4.55   0.0000647      70309.   0.      
+## 8 Chinstrap body_mass_g     -0.120  0.0173            -6.91 5.01e-12</code></pre>
 <pre class="r"><code>summary(multinom_model3)</code></pre>
 <pre><code>## Call:
 ## multinom(formula = outcome_level ~ bill_length_mm + bill_depth_mm + 
@@ -846,61 +835,60 @@ paste0(&#39;Accuracy on Training Set: &#39;, sum(penguins_testing$accuracy)/nrow
 ## 
 ## Coefficients:
 ##           (Intercept) bill_length_mm bill_depth_mm body_mass_g
-## Adelie       12.93669      -5.521778     20.629195 -0.02964974
-## Chinstrap   -17.88071      11.265666     -2.605076 -0.11088897
+## Adelie       41.30411      -48.54704     97.397123  0.08745134
+## Chinstrap   -42.51029       10.21919      4.546393 -0.11957026
 ## 
 ## Std. Errors:
 ##            (Intercept) bill_length_mm bill_depth_mm body_mass_g
-## Adelie    1.406361e-04    0.005988296  0.0025284581   0.4657917
-## Chinstrap 6.102976e-05    0.003891577  0.0004001813   0.4646987
+## Adelie    4.336059e-06   0.0001940033  7.978991e-05  0.01752673
+## Chinstrap 3.129647e-06   0.0001840199  6.466277e-05  0.01731568
 ## 
-## Residual Deviance: 0.00017393 
-## AIC: 16.00017</code></pre>
-<p>We can see that by removing <code>flipper_length_mm</code>, AIC continues to improve (dropping from 20 to 16). In our final iteration, we’ll remove <code>bill_depth_mm</code> given additional multicollinearity issues <code>body_mass_g</code>.</p>
-<pre class="r"><code>multinom_model4 &lt;- multinom(outcome_level ~ bill_length_mm  + body_mass_g, data = penguins_training_mod)</code></pre>
-<pre><code>## # weights:  12 (6 variable)
-## initial  value 50.536165 
-## iter  10 value 4.807234
-## iter  20 value 0.795184
-## iter  30 value 0.706140
-## iter  40 value 0.637834
-## iter  50 value 0.557715
-## iter  60 value 0.469610
-## iter  70 value 0.435194
-## iter  80 value 0.405925
-## iter  90 value 0.387108
-## iter 100 value 0.340862
-## final  value 0.340862 
-## stopped after 100 iterations</code></pre>
-<pre class="r"><code>tidy(multinom_model4, conf.int = FALSE, conf.level = 0.95, exponentiate = FALSE)</code></pre>
-<pre><code>## # A tibble: 6 x 6
-##   y.level   term             estimate std.error statistic   p.value
-##   &lt;chr&gt;     &lt;chr&gt;               &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;     &lt;dbl&gt;
-## 1 Adelie    (Intercept)    111.         0.0229  4851.     0        
-## 2 Adelie    bill_length_mm  -2.50       0.633     -3.96   0.0000749
-## 3 Adelie    body_mass_g     -0.000231   0.00581   -0.0397 0.968    
-## 4 Chinstrap (Intercept)    -30.4        0.111   -274.     0        
-## 5 Chinstrap bill_length_mm   2.35       2.78       0.844  0.399    
-## 6 Chinstrap body_mass_g     -0.0198     0.0340    -0.583  0.560</code></pre>
-<pre class="r"><code>summary(multinom_model4)</code></pre>
-<pre><code>## Call:
-## multinom(formula = outcome_level ~ bill_length_mm + body_mass_g, 
-##     data = penguins_training_mod)
-## 
-## Coefficients:
-##           (Intercept) bill_length_mm   body_mass_g
-## Adelie      111.05956      -2.504932 -0.0002305029
-## Chinstrap   -30.36658       2.346013 -0.0198022157
-## 
-## Std. Errors:
-##           (Intercept) bill_length_mm body_mass_g
-## Adelie     0.02289194      0.6325445 0.005813359
-## Chinstrap  0.11097194      2.7797884 0.033976760
-## 
-## Residual Deviance: 0.6817231 
-## AIC: 12.68172</code></pre>
-<p>This final model yielded our lowest AIC at 12.8, and contains <code>bill_length_mm</code> and <code>body_mass_g</code> as our chosen independent variables for our best parsimonious model.</p>
+## Residual Deviance: 0.01703178 
+## AIC: 16.01703</code></pre>
+<p>We can see that by removing <code>flipper_length_mm</code>, AIC continues to improve (dropping from 20 to 16). <strong>This final model yielded our lowest AIC and contains <code>bill_length_mm</code> <code>bill_depth_mm</code> and <code>body_mass_g</code> as our chosen independent variables for our best parsimonious model</strong>.</p>
 <hr />
+<p><strong>C) Please be sure to interpret your variables in the model</strong></p>
+<hr />
+<p>Given our third multinomial logisitic regression model turned out to be our best parsimonious model (based on AIC), if we examine the summary output, we can find the following:</p>
+<ul>
+<li><p><em>Bill Length (mm)</em> – A one millimeter increase in bill length is associated with the decrease in the log odds of being classified as the Adelie species vs. Gentoo species in the amount of 48.55. Similarly, a one millimeter increase in bill length is associated with the increase in the log odds of being classified as the Chinstrap species vs. Gentoo species by 10.22. Essentially, as bill length increases, it’s less likely to be classified as an Adelie species than Gentoo species. Similarly, as bill length increases, the log odds become more certain to be classified as a Chinstrap species than Gentoo species. This can be confirmed by the initial overlapping distributions represented in the data exploration part of the assignment (Part 1).</p></li>
+<li><p><em>Bill Depth (mm)</em> – A one millimeter increase in bill depth is associated with the increase in the log odds of being classified as the Adelie species vs. Gentoo species in the amount of 97.40. Similarly, a one millimeter increase in bill length is associated with the increase in the log odds of being classified as the Chinstrap species vs. Gentoo species by 4.55. Essentially, as bill depth increases, it’s more likely to be classified as an Adelie species than Gentoo species. Similarly, as bill depth increases, the log odds become more certain to be classified as a Chinstrap species than Gentoo species. This can be confirmed by the initial overlapping distributions represented in the data exploration part of the assignment (Part 1).</p></li>
+<li><p><em>Body Mass (g)</em> – A one gram increase in body mass is associated with the increase in the log odds of being classified as the Adelie species vs. Gentoo species in the amount of 0.09. Similarly, a one gram increase in body mass is associated with the decrease in the log odds of being classified as the Chinstrap species vs. Gentoo species by 0.11. Essentially, as body mass increases, it’s more likely to be classified as an Gentoo species over either Adelie or Chinstrap species. This can be confirmed by the initial overlapping distributions represented in the data exploration part of the assignment (Part 1).</p></li>
+</ul>
+<hr />
+</div>
+<div id="part-4-extra-credit" class="section level4">
+<h4>Part 4: Extra Credit</h4>
+<hr />
+<p><strong>Extra credit: what would be some of the fit statistics you would want to evaluate for your model in question #3? Feel free to share whatever you can provide.</strong></p>
+<hr />
+<p>Before discussing fit statistics, we can first create predictions on our holdout test set based on our model #3 in the last section. We can create a dataframe that shows the computed probabilities for an individual being classified into each class.</p>
+<pre class="r"><code>predictTest_mod = predict(multinom_model3, type = &quot;probs&quot;, newdata = penguins_testing)
+predictTest_mod = data.frame(predictTest_mod)</code></pre>
+<p>Here’s the first five values of the dataframe:</p>
+<pre class="r"><code>head(predictTest_mod)</code></pre>
+<pre><code>##          Gentoo        Adelie     Chinstrap
+## 1 9.309919e-118  1.000000e+00 1.027839e-107
+## 2 1.581919e-207  1.000000e+00 1.612077e-229
+## 3  1.378137e-40 2.968561e-122  1.000000e+00
+## 4  2.720822e-46  1.000000e+00  2.773275e-25
+## 5  1.242817e-65  1.000000e+00  7.323893e-64
+## 6  2.989775e-33  7.430538e-16  1.000000e+00</code></pre>
+<p>As we can see above, probabilities falling closer to 1 will be utilized for classification. Therefore, if we take the maximum value of the three columns for each row, we can then estimate a classification for our target set:</p>
+<pre class="r"><code>target_test &lt;- colnames(predictTest_mod)[apply(predictTest_mod,1,which.max)]
+penguins_testing$target = target_test
+
+cmx_test &lt;- table(penguins_testing$target, penguins_testing$target == penguins_testing$species)
+cmx_test</code></pre>
+<pre><code>##            
+##             FALSE TRUE
+##   Adelie        0   15
+##   Chinstrap     1    7
+##   Gentoo        0   23</code></pre>
+<p>We can see from the confusion matrix generated, that the model estimated the correct classification for all individuals in our test set. This indicates that our model is working quite well.</p>
+<hr />
+<p><strong>Fit Statistics for Multinomial Logisitic Regression</strong></p>
+<p>Some of the fit statistics that you’d want to evaluate for the model produced in part 3 would be based on the predicted results. For instance, now that we have these predictions, we could test the <strong>goodness of fit</strong> by running a Pearson’s Chi-squared test on these predictions and the categories. This would produce an interpretable <span class="math inline">\(X^2\)</span> value. It would also be possible to calculate a psuedo R square values for each of our species – we’d interpret it a bit differently than traditional OLS, but would be available for us to make some assumptions about the proportion of variance of species that can be explained by the independent variables.</p>
 </div>
 
 
