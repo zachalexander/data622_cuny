@@ -1,0 +1,121 @@
+---
+title: 'DATA 622 - Homework #2'
+author: "Zach Alexander"
+date: "3/8/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r libraries, warning=FALSE, message=FALSE, echo=FALSE}
+require(palmerpenguins)
+require(dplyr)
+require(ggplot2)
+require(tibble)
+require(tidyr)
+require(tidyverse)
+require(dplyr)
+require(ggplot2)
+require(ggfortify)
+require(gridExtra)
+require(GGally)
+require(corrplot)
+require(devtools)
+require(caret)
+require(regclass)
+require(MASS)
+require(pROC)
+require(nnet)
+require(modelr)
+require(broom)
+require(mnlogit)
+require(mlogit)
+require(ellipse)
+```
+
+***
+
+#### Part 1: Linear Discriminant Analysis (LDA)
+
+
+***
+
+**a and b) You want to evaluate all the 'features' or dependent variables and see what should be in your model. Please comment on your choices. Just a suggestion: You might want to consider exploring featurePlot on the caret package. Basically, you look at each of the features/dependent variables and see how they are different based on species. Simply eye-balling this might give you an idea about which would be strong ‘classifiers’ (aka predictors)**  
+
+
+First, we'll save the penguin dataset as a dataframe so we can manipulate it easier in the next steps. Additionally, we'll omit any rows with missing data, take the recommendation to remove the `year` variable, as well as create a factor variable based on our `species` variable:
+
+```{r, echo=FALSE}
+penguins <- data.frame(penguins)
+penguins <- na.omit(penguins)
+penguins <- penguins %>% select(-year)
+penguins$species_factor <- factor(penguins$species, labels = c("Adelie", "Gentoo", "Chinstrap"))
+```
+
+
+Next, we will use the `caret` package and the `featurePlot()` function to take a look at all of the available continuous features in the penguins dataset:
+
+```{r, fig.width=12, fig.height=10}
+featurePlot(
+  x = penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g")], y = penguins$species_factor, plot="density", scales=list(
+  x = list(relation = "free"),
+  y = list(relation = "free")
+),
+adjust = 1.5,
+pch = "|",
+layout = c(2, 2),
+auto.key = list(columns = 3)
+)
+
+featurePlot(
+  x = penguins[, c("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g")],
+  y = penguins$species_factor,
+  plot = "ellipse",
+  auto.key = list(columns = 3)
+)
+
+featurePlot(
+  x = penguins[, c("bill_length_mm",
+                   "bill_depth_mm",
+                   "flipper_length_mm",
+                   "body_mass_g")],
+  y = penguins$species_factor,
+  plot = "box",
+  scales = list(y = list(relation = "free"),
+                x = list(rot = 90)),
+  layout = c(4, 1)
+)
+```
+
+Interestingly, when we break out the plots by species and look at the distributions, we can see that `bill_depth_mm` and `body_mass_g` show clustering between Adelie and Chinstrap penguins (blue and green), while Gentoo penguins tend to contrast the other two species for those two features. However, when examining the distributions for `bill_length_mm` and `flipper_length_mm`, we can see that there is less overlap between the distribution curves, indicating that they may serve as better predictors of our `species` variable. The same appears to be true when looking at the ellipse and box plots, each showing less overlap and clustering for features such as `flipper_length_mm` and `bill_length_mm`, and more clustering of Adelie and Chinstrap species for `bill_depth_mm` and `body_mass_g`. Since the goal is to determine a good classifier, we'll want to use features in our analysis that will effectively distinguish by species type. Therefore, for our LDA analysis, I've chosen to include `bill_length_mm` and `flipper_length_mm`.  
+
+***Splitting into training and testing datasets***  
+
+Before running our LDA analysis, we'll want to split our penguins dataset into a training and testing set in order to validate our LDA model and see how effective our predictions are on a hold-out test set. Therefore, we'll split into a training and testing set by doing the following:  
+
+```{r}
+set.seed(1234)
+
+# utilizing one dataset for all four models
+penguins_partition <- createDataPartition(penguins$species, p=0.8, list=FALSE)
+penguins_training <- penguins[penguins_partition,]
+penguins_testing <- penguins[-penguins_partition,]
+```
+
+**c) Fit your LDA model using whatever predictor variables you deem appropriate. Feel free to split the data into training and test sets before fitting the model.**  
+
+Now, with our dataset split into a training and test set, we'll use the training set to run our initial LDA:  
+
+```{r}
+penguins_lda_training <- lda(species ~ bill_length_mm + flipper_length_mm, data = penguins_training)
+
+penguins_lda_training
+```
+From the output of our LDA fit, at the top we can see the proportion of each species in the training set. Next, we can see the coefficients of our linear discriminants for both `bill_length_mm` and `flipper_length_mm`. These coefficients are used in our discriminant function to create the decision boundaries. Since k = 3 here, we can plot this in a two-dimensional space, which you can see below:
+
+```{r}
+plot(penguins_lda_training)
+```
+
