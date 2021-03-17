@@ -33,6 +33,10 @@ require(broom)
 require(mnlogit)
 require(mlogit)
 require(ellipse)
+require(cvms)
+require(klaR)
+require(knitr)
+require(kableExtra)
 ```
 
 ***
@@ -42,7 +46,7 @@ require(ellipse)
 
 ***
 
-**a and b) You want to evaluate all the 'features' or dependent variables and see what should be in your model. Please comment on your choices. Just a suggestion: You might want to consider exploring featurePlot on the caret package. Basically, you look at each of the features/dependent variables and see how they are different based on species. Simply eye-balling this might give you an idea about which would be strong ‘classifiers’ (aka predictors)**  
+**You want to evaluate all the 'features' or dependent variables and see what should be in your model. Please comment on your choices. Just a suggestion: You might want to consider exploring featurePlot on the caret package. Basically, you look at each of the features/dependent variables and see how they are different based on species. Simply eye-balling this might give you an idea about which would be strong ‘classifiers’ (aka predictors)**  
 
 
 First, we'll save the penguin dataset as a dataframe so we can manipulate it easier in the next steps. Additionally, we'll omit any rows with missing data, take the recommendation to remove the `year` variable, as well as create a factor variable based on our `species` variable:
@@ -96,15 +100,15 @@ Interestingly, when we break out the plots by species and look at the distributi
 Before running our LDA analysis, we'll want to split our penguins dataset into a training and testing set in order to validate our LDA model and see how effective our predictions are on a hold-out test set. Therefore, we'll split into a training and testing set by doing the following:  
 
 ```{r}
-set.seed(1234)
+set.seed(12345)
 
 # utilizing one dataset for all four models
-penguins_partition <- createDataPartition(penguins$species, p=0.8, list=FALSE)
+penguins_partition <- createDataPartition(penguins$species, p=0.7, list=FALSE)
 penguins_training <- penguins[penguins_partition,]
 penguins_testing <- penguins[-penguins_partition,]
 ```
 
-**c) Fit your LDA model using whatever predictor variables you deem appropriate. Feel free to split the data into training and test sets before fitting the model.**  
+**Fit your LDA model using whatever predictor variables you deem appropriate. Feel free to split the data into training and test sets before fitting the model.**  
 
 Now, with our dataset split into a training and test set, we'll use the training set to run our initial LDA:  
 
@@ -117,5 +121,232 @@ From the output of our LDA fit, at the top we can see the proportion of each spe
 
 ```{r}
 plot(penguins_lda_training)
+penguins_lda_plot <- cbind(penguins_training, predict(penguins_lda_training)$x)
+ggplot(penguins_lda_plot, aes(LD1, LD2)) + geom_point(aes(color = species))
 ```
+As we can see from the plots above, there is pretty distinct clustering between the three species where LD1 and LD2 are mapped, we can see Adelie predictions in the upper left, Chinstrap in lower middle, and Gentoo in the upper right.
+
+**Look at fit statistics/accuracy rates.**  
+
+We'll now use this model to create some predictions on our training and testing dataset. First, we can take a look at the first ten predictions in our training dataset based on our fitted model:  
+```{r}
+head(round((predict(penguins_lda_training, penguins_training)$posterior), 4), n=10)
+```
+
+From above, we can see that the model provides an estimated probability for each one of our individuals, and the highest probability signifies where the individual is ultimately grouped. After looking at the first ten predictions in the training dataset, we can see that all 10 are predicted to be Adelie species based on their predictor values of `bill_length_mm` and `flipper_length_mm` and their ensuing probabilities calculated by the LDA model.  
+
+We can now use our model to make predictions on our holdout test dataset in order to correctly evaluate its performance:  
+
+```{r}
+penguins_predictions_testing <- predict(penguins_lda_training, penguins_testing)$class
+```
+
+Then, after creating our predictions on our holdout testing dataset, we can now determine how many penguins were misclassified from our LDA model by looking at the class predictions generated from the model and comparing them to the actual `species` column present in our testing set.  
+
+In order to do this, we'll first need to create a function, we'll call it `misclassified_penguins()`, which accepts two arguments of "actual" and "predicted". Then, it compares each rows values to determine whether or not values are equal between the prediction and the species.
+```{r}
+misclassified_penguins <- function(actual, predicted) {
+  mean(print(actual != predicted))
+}
+
+misclassified_penguins(actual = penguins_testing$species, predicted = penguins_predictions_testing)
+```
+We can see below that only about 3% (3 instances) were misclassified when using the LDA model on our testing set! Therefore, our overall accuracy is about 97%, not bad!  
+
+Next, we'll create a confusion matrix and take a look at other fit statistics to further evaluate our LDA model.
+
+```{r, echo=FALSE}
+penguins_multi_class_lda <- tibble("target" = penguins_testing$species, "prediction" = penguins_predictions_testing)
+
+penguins_multi_class_lda_cm <- confusion_matrix(targets = penguins_multi_class_lda$target, penguins_multi_class_lda$prediction)
+
+analysis <- 'Linear Discriminant Analysis (LDA)'
+accuracy <- penguins_multi_class_lda_cm$`Overall Accuracy`
+f1 <- penguins_multi_class_lda_cm$F1
+sensitivity <- penguins_multi_class_lda_cm$Sensitivity
+specificity <- penguins_multi_class_lda_cm$Specificity
+
+lda_eval_df <- data.frame(analysis, accuracy, f1, sensitivity, specificity)
+colnames(lda_eval_df) <- c("Analysis", "Accuracy", "F1", "Sensitivity", "Specificity")
+
+kable(lda_eval_df) %>% kable_styling(bootstrap_options = "basic")
+
+```
+
+From the fit statistics above, we can see that the accuracy of our LDA model was around 97% on our testing dataset. Additionally, we had a high F1 score of 0.97, and the sensitivity and specificity values were also quite high at 0.96 and 0.98 respectively. Overall, we can see that this model performed quite well given these fit statistics.  
+
+When looking at the confusion matrix below, we can see that the model classified all Chinstrap individuals correctly, only misidentified one Adelie individual as a Chinstrap species, and misidentified two Gentoo individuals (one as Adelie and the other as Gentoo). The slightly higher misclassification on the Gentoo individuals would be something to keep in mind, especially if this model were to be used on a larger dataset. Since there was a slight class imbalance between the three species in our training dataset, this could account for a few of these discrepancies.
+
+```{r, warning=FALSE, echo=FALSE}
+plot_confusion_matrix(penguins_multi_class_lda_cm$`Confusion Matrix`[[1]])
+```
+
+***
+
+#### Part 2: Quadratic Discriminant Analysis (QDA)
+
+
+***
+
+Given that we've already done a fair amount of exploratory analysis using the `featurePlot()` function in the `caret` package, and we've split our penguins dataset into a viable training and testing dataset, we can move along to fitting a quadratic discriminant analysis model to our data.  
+
+In order to do this, we'll continue to use the `MASS` package:  
+
+```{r}
+penguins_qda_training <- qda(species ~ bill_length_mm + flipper_length_mm, data = penguins_training)
+
+penguins_qda_training
+```
+After fitting our QDA model, we can take a look at the partitions created below: 
+
+### **QDA Partition Plot**
+
+```{r, echo=FALSE}
+partimat(species ~ bill_length_mm + flipper_length_mm, data = penguins_training, method = "qda", col.correct='gray', col.wrong='red')
+```
+\br
+
+As we can see from the partition plot below, there's distinct boundaries created by the QDA model. If we compare these boundaries to the LDA model we ran earlier (partition plot below), we can see that the shape of the boundaries are quite different, where the LDA model denotes distinct *linear* decision boundaries, the QDA model denotes *quadratic* decision boundaries. 
+
+### **LDA Partition Plot** 
+
+```{r, echo=FALSE}
+partimat(species ~ bill_length_mm + flipper_length_mm, data = penguins_training, method = "lda", col.correct='gray', col.wrong='red')
+```
+Now, in order for us to evaluate our QDA model, we'll have to generate predictions on our holdout test set again:  
+
+```{r}
+penguins_predictions_testing_qda <- predict(penguins_qda_training, penguins_testing)$class
+```
+
+Similar to our LDA process, we can now determine how many penguins were misclassified from our QDA model by looking at the class predictions generated from the model and comparing them to the actual `species` column present in our testing set.  
+
+In order to do this, we'll use our `misclassified_penguins()` function again, which accepts two arguments of "actual" and "predicted".
+```{r}
+misclassified_penguins(actual = penguins_testing$species, predicted = penguins_predictions_testing_qda)
+```
+We can see below that only about 2% (2 instances) were misclassified when using the LDA model on our testing set! Therefore, our overall accuracy is about 98%, even better than our LDA model.  
+
+Next, we'll create a confusion matrix and take a look at other fit statistics to further evaluate our LDA model.
+
+```{r, echo=FALSE}
+penguins_multi_class_qda <- tibble("target" = penguins_testing$species, "prediction" = penguins_predictions_testing_qda)
+
+penguins_multi_class_qda_cm <- confusion_matrix(targets = penguins_multi_class_qda$target, penguins_multi_class_qda$prediction)
+
+analysis_qda <- 'Quadratic Discriminant Analysis (QDA)'
+accuracy_qda <- penguins_multi_class_qda_cm$`Overall Accuracy`
+f1_qda <- penguins_multi_class_qda_cm$F1
+sensitivity_qda <- penguins_multi_class_qda_cm$Sensitivity
+specificity_qda <- penguins_multi_class_qda_cm$Specificity
+
+qda_eval_df <- data.frame(analysis_qda, accuracy_qda, f1_qda, sensitivity_qda, specificity_qda)
+colnames(qda_eval_df) <- c("Analysis", "Accuracy", "F1", "Sensitivity", "Specificity")
+
+eval_df <- rbind(lda_eval_df, qda_eval_df)
+
+kable(eval_df) %>% kable_styling(bootstrap_options = "basic", position = "center")
+
+```
+
+From the fit statistics above, we can see that the accuracy of our QDA model was around 98% on our testing dataset, which was slightly higher than the accuracy on our LDA model. Additionally, we had a high F1 score of 0.98, and the sensitivity and specificity values were also quite high at 0.98 and 0.99 respectively. Overall, we can see that this model performed quite well given these fit statistics, and slightly better than our LDA model.  
+
+When looking at the confusion matrix below, we can see that the model classified all Chinstrap individuals correctly, only misidentified one Adelie individual as a Chinstrap species, and misidentified one Gentoo individual as an Adelie species.
+
+```{r, warning=FALSE, echo=FALSE}
+plot_confusion_matrix(penguins_multi_class_qda_cm$`Confusion Matrix`[[1]])
+```
+
+So far, out of our two models, it looks like our QDA model performed slightly better on our testing dataset.  
+
+***
+
+#### Part 3: Naive Bayes
+
+
+***  
+
+In a similar process to our LDA and QDA analysis, we'll do a final model using Naive Bayes classification on our penguins dataset. In order to do this, we can use the `NaiveBayes()` function in the `klaR` package.  
+
+```{r}
+penguins_nb_training <- NaiveBayes(species ~ bill_length_mm + flipper_length_mm, data = penguins_training)
+
+penguins_nb_training$apriori
+penguins_nb_training$tables
+```
+
+Although initially I thought the mean and standard deviations in the Naive Bayes output may be different than those in the LDA and QDA outputs, we can see that they are indeed the same across all three models.  
+
+Additionally, when plotting the partition plot of this model, we can see that Naive Bayes seems to create decision boundaries that aren't quite as drastic as the QDA interpretation, but do have a slight quadratic shape to it.
+
+### **Naive Bayes Partition Plot** 
+
+```{r, message=FALSE, warning=FALSE}
+partimat(species ~ bill_length_mm + flipper_length_mm, data = penguins_training, method = "naiveBayes", col.correct='gray', col.wrong='red')
+```
+Similar to the above processes, in order for us to evaluate our Naive Bayes model and compare it against our other two, we'll have to generate predictions on our holdout test set again:  
+
+```{r}
+penguins_predictions_testing_nb <- predict(penguins_nb_training, penguins_testing)$class
+```
+
+Similar to our LDA and QDA process, we can now determine how many penguins were misclassified from our Naive Bayes model by looking at the class predictions generated from the model and comparing them to the actual `species` column present in our testing set.  
+
+In order to do this, we'll use our `misclassified_penguins()` function one last time, which accepts two arguments of "actual" and "predicted".
+```{r}
+misclassified_penguins(actual = penguins_testing$species, predicted = penguins_predictions_testing_nb)
+```
+We can see below that about 5% (5 instances) were misclassified when using the LDA model on our testing set! Therefore, our overall accuracy is about 95%, which is worse than both our LDA and QDA models.  
+
+Next, we'll create a confusion matrix and take a look at other fit statistics to further evaluate our LDA model.
+
+```{r, echo=FALSE}
+penguins_multi_class_nb <- tibble("target" = penguins_testing$species, "prediction" = penguins_predictions_testing_nb)
+
+penguins_multi_class_nb_cm <- confusion_matrix(targets = penguins_multi_class_nb$target, penguins_multi_class_nb$prediction)
+
+analysis_nb <- 'Naive Bayes (NB)'
+accuracy_nb <- penguins_multi_class_nb_cm$`Overall Accuracy`
+f1_nb <- penguins_multi_class_nb_cm$F1
+sensitivity_nb <- penguins_multi_class_nb_cm$Sensitivity
+specificity_nb <- penguins_multi_class_nb_cm$Specificity
+
+nb_eval_df <- data.frame(analysis_nb, accuracy_nb, f1_nb, sensitivity_nb, specificity_nb)
+colnames(nb_eval_df) <- c("Analysis", "Accuracy", "F1", "Sensitivity", "Specificity")
+
+eval_df <- rbind(lda_eval_df, qda_eval_df, nb_eval_df)
+
+kable(eval_df) %>% kable_styling(bootstrap_options = "basic", position = "center")
+
+```
+
+From the fit statistics above, we can see that the accuracy of our Naive Bayes model was around 95% on our testing dataset, which was slightly lower than the accuracy on our LDA and QDA models. Additionally, we had an F1 score of 0.94, and the sensitivity and specificity values were at 0.93 and 0.97 respectively. Overall, we can see that this model performed worse than our other two previous models given these fit statistics.  
+
+When looking at the confusion matrix below, we can see that the model classified all but one Chinstrap individuals correctly (misclassified as an Adelie species), only misidentified one Adelie individual as a Chinstrap species, and misidentified three Gentoo individuals (two as Chinstrap and one as an Adelie species).
+
+```{r, warning=FALSE, echo=FALSE}
+plot_confusion_matrix(penguins_multi_class_nb_cm$`Confusion Matrix`[[1]])
+```
+
+***
+
+#### Part 4: Conclusion Based on Evaluation of All Three Models
+
+
+***  
+
+After running our LDA, QDA and Naive Bayes analysis on our penguins dataset, we can discuss a few different items pertaining to each model's performance. When we look at a final table below that displays the accuracy and fit statistics of the three models, we can see slight differences across all three:  
+
+
+```{r, echo=FALSE}
+kable(eval_df) %>% kable_styling(bootstrap_options = "basic", position = "center")
+```
+
+***Naive Bayes didn't perform well in this assignment, relative to our other models***
+
+When looking at the accuracy of all three models, it appears that our Naive Bayes model underperformed on all of our fit statistic measures compared to our LDA and QDA analyses. Additionally, when we mapped out the predictions in a confusion matrix, there were slightly more misclassified instances in our Naive Bayes predictions than our LDA or QDA model predictions. This seems to follow a trend in literature that suggests that Naive Bayes models are often much more suitable for very high dimensional datasets. Given that our k-value was very low in this assignment, we weren't able to harness the full power of Naive Bayes. However, if we were to pick between Naive Bayes, LDA, and QDA for text analysis, where we were working with a very sparse corpus of text data, Naive Bayes would be much more effective.  
+
+***QDA had a slight edge in performance over LDA***  
+
+With this in mind, we could see that both LDA and QDA performed quite well with our training and testing datasets in this assignment. Although it looks like QDA had a slight edge in accuracy and other fit statistics over our LDA model, it is important to note that if we were to use this on another holdout dataset, the simplicity of our LDA model may provide a more stable set of predictions than the QDA model. Regardless, either the QDA model or the LDA model would be a good pick!
 
