@@ -41,7 +41,7 @@ require(kableExtra)
 
 ***
 
-#### Part 1: Linear Discriminant Analysis (LDA)
+#### **Part 1: Linear Discriminant Analysis (LDA)**
 
 
 ***
@@ -93,11 +93,13 @@ featurePlot(
 )
 ```
 
-Interestingly, when we break out the plots by species and look at the distributions, we can see that `bill_depth_mm` and `body_mass_g` show clustering between Adelie and Chinstrap penguins (blue and green), while Gentoo penguins tend to contrast the other two species for those two features. However, when examining the distributions for `bill_length_mm` and `flipper_length_mm`, we can see that there is less overlap between the distribution curves, indicating that they may serve as better predictors of our `species` variable. The same appears to be true when looking at the ellipse and box plots, each showing less overlap and clustering for features such as `flipper_length_mm` and `bill_length_mm`, and more clustering of Adelie and Chinstrap species for `bill_depth_mm` and `body_mass_g`. Since the goal is to determine a good classifier, we'll want to use features in our analysis that will effectively distinguish by species type. Therefore, for our LDA analysis, I've chosen to include `bill_length_mm` and `flipper_length_mm`.  
+Interestingly, when we break out the plots by species and look at the distributions, we can see that `bill_depth_mm` and `body_mass_g` show clustering between Adelie and Chinstrap penguins (blue and green), while Gentoo penguins tend to contrast the other two species for those two features. However, when examining the distributions for `bill_length_mm` and `flipper_length_mm`, we can see that there is less overlap between the distribution curves, indicating that they may serve as better predictors of our `species` variable. The same appears to be true when looking at the ellipse and box plots, each showing less overlap and clustering for features such as `flipper_length_mm` and `bill_length_mm`, and more clustering of Adelie and Chinstrap species for `bill_depth_mm` and `body_mass_g`. Since the goal is to determine a good classifier, we'll want to use features in our analysis that will effectively distinguish by species type. Therefore, for our LDA, QDA, and Naive Bayes models, I've chosen to include `bill_length_mm` and `flipper_length_mm` as my predictors for species. 
+
+***
 
 ***Splitting into training and testing datasets***  
 
-Before running our LDA analysis, we'll want to split our penguins dataset into a training and testing set in order to validate our LDA model and see how effective our predictions are on a hold-out test set. Therefore, we'll split into a training and testing set by doing the following:  
+In our first step, we'll run an LDA model. However, before running our LDA, we'll want to split our penguins dataset into a training and testing set in order to validate our models and see how effective our predictions are on a hold-out test set. Therefore, we'll split into a training and testing set by doing the following:  
 
 ```{r}
 set.seed(12345)
@@ -107,6 +109,8 @@ penguins_partition <- createDataPartition(penguins$species, p=0.7, list=FALSE)
 penguins_training <- penguins[penguins_partition,]
 penguins_testing <- penguins[-penguins_partition,]
 ```
+
+***
 
 **Fit your LDA model using whatever predictor variables you deem appropriate. Feel free to split the data into training and test sets before fitting the model.**  
 
@@ -119,17 +123,19 @@ penguins_lda_training
 ```
 From the output of our LDA fit, at the top we can see the proportion of each species in the training set. Next, we can see the coefficients of our linear discriminants for both `bill_length_mm` and `flipper_length_mm`. These coefficients are used in our discriminant function to create the decision boundaries. Since k = 3 here, we can plot this in a two-dimensional space, which you can see below:
 
-```{r}
+```{r, echo=FALSE}
 plot(penguins_lda_training)
 penguins_lda_plot <- cbind(penguins_training, predict(penguins_lda_training)$x)
 ggplot(penguins_lda_plot, aes(LD1, LD2)) + geom_point(aes(color = species))
 ```
 As we can see from the plots above, there is pretty distinct clustering between the three species where LD1 and LD2 are mapped, we can see Adelie predictions in the upper left, Chinstrap in lower middle, and Gentoo in the upper right.
 
+***
+
 **Look at fit statistics/accuracy rates.**  
 
-We'll now use this model to create some predictions on our training and testing dataset. First, we can take a look at the first ten predictions in our training dataset based on our fitted model:  
-```{r}
+We'll now use this model to create some predictions on our training and testing dataset. First, we can take a look at the first ten predictions (posteriors) in our training dataset based on our fitted model:  
+```{r, echo=FALSE}
 head(round((predict(penguins_lda_training, penguins_training)$posterior), 4), n=10)
 ```
 
@@ -146,7 +152,10 @@ Then, after creating our predictions on our holdout testing dataset, we can now 
 In order to do this, we'll first need to create a function, we'll call it `misclassified_penguins()`, which accepts two arguments of "actual" and "predicted". Then, it compares each rows values to determine whether or not values are equal between the prediction and the species.
 ```{r}
 misclassified_penguins <- function(actual, predicted) {
-  mean(print(actual != predicted))
+  mean(actual != predicted)
+  print(table(actual != predicted))
+  print(paste0('Percent misclassified: ', round(mean(actual != predicted), 2)*100, '%'))
+  print(paste0('Percent classified correctly: ', round(1 - mean(actual != predicted), 2)*100, '%'))
 }
 
 misclassified_penguins(actual = penguins_testing$species, predicted = penguins_predictions_testing)
@@ -183,14 +192,14 @@ plot_confusion_matrix(penguins_multi_class_lda_cm$`Confusion Matrix`[[1]])
 
 ***
 
-#### Part 2: Quadratic Discriminant Analysis (QDA)
+#### **Part 2: Quadratic Discriminant Analysis (QDA)**
 
 
 ***
 
 Given that we've already done a fair amount of exploratory analysis using the `featurePlot()` function in the `caret` package, and we've split our penguins dataset into a viable training and testing dataset, we can move along to fitting a quadratic discriminant analysis model to our data.  
 
-In order to do this, we'll continue to use the `MASS` package:  
+In order to do this, we'll continue to use the `MASS` package and the `qda()` function:  
 
 ```{r}
 penguins_qda_training <- qda(species ~ bill_length_mm + flipper_length_mm, data = penguins_training)
@@ -213,6 +222,8 @@ As we can see from the partition plot below, there's distinct boundaries created
 ```{r, echo=FALSE}
 partimat(species ~ bill_length_mm + flipper_length_mm, data = penguins_training, method = "lda", col.correct='gray', col.wrong='red')
 ```
+\br
+
 Now, in order for us to evaluate our QDA model, we'll have to generate predictions on our holdout test set again:  
 
 ```{r}
@@ -261,7 +272,7 @@ So far, out of our two models, it looks like our QDA model performed slightly be
 
 ***
 
-#### Part 3: Naive Bayes
+#### **Part 3: Naive Bayes**
 
 
 ***  
@@ -330,7 +341,7 @@ plot_confusion_matrix(penguins_multi_class_nb_cm$`Confusion Matrix`[[1]])
 
 ***
 
-#### Part 4: Conclusion Based on Evaluation of All Three Models
+#### **Part 4: Conclusion Based on Evaluation of All Three Models**
 
 
 ***  
@@ -344,7 +355,7 @@ kable(eval_df) %>% kable_styling(bootstrap_options = "basic", position = "center
 
 ***Naive Bayes didn't perform well in this assignment, relative to our other models***
 
-When looking at the accuracy of all three models, it appears that our Naive Bayes model underperformed on all of our fit statistic measures compared to our LDA and QDA analyses. Additionally, when we mapped out the predictions in a confusion matrix, there were slightly more misclassified instances in our Naive Bayes predictions than our LDA or QDA model predictions. This seems to follow a trend in literature that suggests that Naive Bayes models are often much more suitable for very high dimensional datasets. Given that our k-value was very low in this assignment, we weren't able to harness the full power of Naive Bayes. However, if we were to pick between Naive Bayes, LDA, and QDA for text analysis, where we were working with a very sparse corpus of text data, Naive Bayes would be much more effective.  
+When looking at the accuracy of all three models, it appears that our Naive Bayes model underperformed on all of our fit statistic measures compared to our LDA and QDA analyses. Additionally, when we mapped out the predictions in a confusion matrix, there were slightly more misclassified instances in our Naive Bayes predictions than our LDA or QDA model predictions. This seems to follow a trend in literature that suggests that Naive Bayes models are often much more suitable for very high dimensional datasets. Given that our k-value was very low in this assignment, we weren't able to harness the full power of Naive Bayes. However, if we were to pick between Naive Bayes, LDA, and QDA for analysis dealing with sparser datasets (i.e. text analysis), where we were working with a very sparse corpus of text data, Naive Bayes would be much more effective.  
 
 ***QDA had a slight edge in performance over LDA***  
 
